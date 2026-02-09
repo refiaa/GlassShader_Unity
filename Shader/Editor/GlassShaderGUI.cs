@@ -47,6 +47,10 @@ public sealed class GlassShaderGUI : ShaderGUI
 
         public static readonly GUIContent NormalMap = new GUIContent("Normal Map");
         public static readonly GUIContent NormalScale = new GUIContent("Normal Scale");
+        public static readonly GUIContent RoughnessMap = new GUIContent("Roughness Map");
+        public static readonly GUIContent RoughnessMapStrength = new GUIContent("Roughness Map Strength");
+        public static readonly GUIContent MetallicMap = new GUIContent("Metalic Map");
+        public static readonly GUIContent MetallicMapStrength = new GUIContent("Metalic Map Strength");
 
         public static readonly GUIContent BackDepthTexture = new GUIContent("Back Depth Texture (Linear Eye)");
         public static readonly GUIContent SceneColorTexture = new GUIContent("Scene Color Texture");
@@ -99,6 +103,10 @@ public sealed class GlassShaderGUI : ShaderGUI
 
         public const string NormalMap = "_NormalMap";
         public const string NormalScale = "_NormalScale";
+        public const string RoughnessMap = "_RoughnessMap";
+        public const string RoughnessMapStrength = "_RoughnessMapStrength";
+        public const string MetallicMap = "_MetallicMap";
+        public const string MetallicMapStrength = "_MetallicMapStrength";
 
         public const string BackDepthTex = "_BackDepthTex";
         public const string SceneColorTex = "_SceneColorTex";
@@ -163,6 +171,10 @@ public sealed class GlassShaderGUI : ShaderGUI
 
     private MaterialProperty _normalMap;
     private MaterialProperty _normalScale;
+    private MaterialProperty _roughnessMap;
+    private MaterialProperty _roughnessMapStrength;
+    private MaterialProperty _metallicMap;
+    private MaterialProperty _metallicMapStrength;
 
     private MaterialProperty _backDepthTex;
     private MaterialProperty _sceneColorTex;
@@ -253,6 +265,10 @@ public sealed class GlassShaderGUI : ShaderGUI
 
         BindProperty(ref _normalMap, Names.NormalMap, properties);
         BindProperty(ref _normalScale, Names.NormalScale, properties);
+        BindProperty(ref _roughnessMap, Names.RoughnessMap, properties);
+        BindProperty(ref _roughnessMapStrength, Names.RoughnessMapStrength, properties);
+        BindProperty(ref _metallicMap, Names.MetallicMap, properties);
+        BindProperty(ref _metallicMapStrength, Names.MetallicMapStrength, properties);
 
         BindProperty(ref _backDepthTex, Names.BackDepthTex, properties);
         BindProperty(ref _sceneColorTex, Names.SceneColorTex, properties);
@@ -334,6 +350,40 @@ public sealed class GlassShaderGUI : ShaderGUI
         else
         {
             DrawProperty(materialEditor, _normalScale, Styles.NormalScale);
+        }
+
+        if (_roughnessMap != null)
+        {
+            if (_roughnessMapStrength != null)
+            {
+                materialEditor.TexturePropertySingleLine(Styles.RoughnessMap, _roughnessMap, _roughnessMapStrength);
+            }
+            else
+            {
+                materialEditor.TexturePropertySingleLine(Styles.RoughnessMap, _roughnessMap);
+            }
+            materialEditor.TextureScaleOffsetProperty(_roughnessMap);
+        }
+        else
+        {
+            DrawProperty(materialEditor, _roughnessMapStrength, Styles.RoughnessMapStrength);
+        }
+
+        if (_metallicMap != null)
+        {
+            if (_metallicMapStrength != null)
+            {
+                materialEditor.TexturePropertySingleLine(Styles.MetallicMap, _metallicMap, _metallicMapStrength);
+            }
+            else
+            {
+                materialEditor.TexturePropertySingleLine(Styles.MetallicMap, _metallicMap);
+            }
+            materialEditor.TextureScaleOffsetProperty(_metallicMap);
+        }
+        else
+        {
+            DrawProperty(materialEditor, _metallicMapStrength, Styles.MetallicMapStrength);
         }
     }
 

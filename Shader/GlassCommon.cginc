@@ -47,6 +47,14 @@ inline float GlassSchlickFresnel(float cosTheta, float f0)
     return f0 + (1.0 - f0) * oneMinusCos5;
 }
 
+inline float3 GlassSchlickFresnelColor(float cosTheta, float3 f0)
+{
+    float oneMinusCos = 1.0 - saturate(cosTheta);
+    float oneMinusCos2 = oneMinusCos * oneMinusCos;
+    float oneMinusCos5 = oneMinusCos2 * oneMinusCos2 * oneMinusCos;
+    return f0 + (1.0.xxx - f0) * oneMinusCos5;
+}
+
 inline float GlassComputeApproxThickness(float fallbackThickness, float3 normalWS, float3 viewDirWS, float minDenominator)
 {
     float ndotv = abs(dot(normalize(normalWS), normalize(viewDirWS)));

@@ -41,6 +41,10 @@ Shader "refiaa/glass"
         [Header(Surface Detail)]
         _NormalMap("Normal Map", 2D) = "bump" {}
         _NormalScale("Normal Scale", Range(0.000, 2.000)) = 1.000
+        _RoughnessMap("Roughness Map", 2D) = "black" {}
+        _RoughnessMapStrength("Roughness Map Strength", Range(0.000, 1.000)) = 1.000
+        _MetallicMap("Metalic Map", 2D) = "black" {}
+        _MetallicMapStrength("Metalic Map Strength", Range(0.000, 1.000)) = 1.000
 
         [Header(External Inputs)]
         [NoScaleOffset] _BackDepthTex("Back Depth Texture (Linear Eye)", 2D) = "black" {}
@@ -118,6 +122,8 @@ Shader "refiaa/glass"
             };
 
             sampler2D _NormalMap;
+            sampler2D _RoughnessMap;
+            sampler2D _MetallicMap;
             sampler2D _BackDepthTex;
             sampler2D _SceneColorTex;
             sampler2D _GlassGrabTex;
@@ -130,6 +136,8 @@ Shader "refiaa/glass"
             float4 _TransmissionColorAtDistance;
             float4 _ReflectionTint;
             float4 _NormalMap_ST;
+            float4 _RoughnessMap_ST;
+            float4 _MetallicMap_ST;
             float _ReferenceDistance;
             float _ThicknessScale;
             float _ThicknessBias;
@@ -158,6 +166,8 @@ Shader "refiaa/glass"
             float _TransmissionAtGrazing;
             float _ReflectionAbsorption;
             float _NormalScale;
+            float _RoughnessMapStrength;
+            float _MetallicMapStrength;
             float _UseSceneColorTexture;
             float _UseBackDepthTexture;
             float _BackDepthIsLinear;
@@ -173,7 +183,7 @@ Shader "refiaa/glass"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
                 output.positionCS = UnityObjectToClipPos(input.vertex);
-                output.uv = TRANSFORM_TEX(input.uv, _NormalMap);
+                output.uv = input.uv;
                 output.screenPos = ComputeScreenPos(output.positionCS);
                 output.grabPos = ComputeGrabScreenPos(output.positionCS);
                 output.worldPos = mul(unity_ObjectToWorld, input.vertex).xyz;
@@ -315,12 +325,48 @@ Shader "refiaa/glass"
                 return 0.0.xxx;
             }
 
+            float GlassApplyMapStrength(float baseValue, float mapValue, float strength01)
+            {
+                return saturate(lerp(baseValue, saturate(mapValue), saturate(strength01)));
+            }
+
+            float GlassDistributionGGX(float nDotH, float roughnessLinear)
+            {
+                float a = max(roughnessLinear, 0.002);
+                float a2 = a * a;
+                float d = nDotH * nDotH * (a2 - 1.0) + 1.0;
+                return a2 / max(UNITY_PI * d * d, 1e-6);
+            }
+
+            float GlassGeometrySchlickGGX(float nDotX, float roughnessLinear)
+            {
+                float a = max(roughnessLinear, 0.002);
+                float k = (a + 1.0);
+                k = (k * k) * 0.125;
+                return nDotX / max(nDotX * (1.0 - k) + k, 1e-6);
+            }
+
+            float GlassGeometrySmith(float nDotL, float nDotV, float roughnessLinear)
+            {
+                return GlassGeometrySchlickGGX(nDotL, roughnessLinear) * GlassGeometrySchlickGGX(nDotV, roughnessLinear);
+            }
+
             float4 frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 float3 viewDirWS = normalize(UnityWorldSpaceViewDir(input.worldPos));
-                float3 normalTS = GlassUnpackNormalTS(_NormalMap, input.uv, _NormalScale);
+                float2 normalUV = TRANSFORM_TEX(input.uv, _NormalMap);
+                float2 roughnessUV = TRANSFORM_TEX(input.uv, _RoughnessMap);
+                float2 metallicUV = TRANSFORM_TEX(input.uv, _MetallicMap);
+                float roughnessMap = tex2D(_RoughnessMap, roughnessUV).r;
+                float metallicMap = tex2D(_MetallicMap, metallicUV).r;
+                float basePerceptualRoughness = saturate(1.0 - _Smoothness);
+                float perceptualRoughness = GlassApplyMapStrength(basePerceptualRoughness, roughnessMap, _RoughnessMapStrength);
+                float roughnessLinear = max(perceptualRoughness * perceptualRoughness, 0.003);
+                float metallic = GlassApplyMapStrength(0.0, metallicMap, _MetallicMapStrength);
+
+                float3 normalTS = GlassUnpackNormalTS(_NormalMap, normalUV, _NormalScale);
                 float tangentLen2 = dot(input.tangentWS, input.tangentWS);
                 float3 normalWS = normalize(input.normalWS);
                 if (tangentLen2 > 1e-5)
@@ -416,30 +462,53 @@ Shader "refiaa/glass"
                 }
 
                 float eta = max(_IOR, 1.0001);
-                float f0 = pow((eta - 1.0) / (eta + 1.0), 2.0);
-                float cosTheta = saturate(dot(normalWS, viewDirWS));
-                float fresnel = saturate(GlassSchlickFresnel(cosTheta, f0) * _FresnelBoost);
-                float transmissionWeight = saturate((1.0 - fresnel) + _TransmissionAtGrazing * fresnel);
-                float reflectionWeight = saturate(1.0 - transmissionWeight);
+                float f0Dielectric = pow((eta - 1.0) / (eta + 1.0), 2.0);
+                float3 dielectricSpecular = saturate(_ReflectionTint.rgb) * f0Dielectric;
+                float3 specularColor = lerp(dielectricSpecular, saturate(_ReflectionTint.rgb), metallic);
+                float oneMinusReflectivity = 1.0 - max(specularColor.r, max(specularColor.g, specularColor.b));
+                oneMinusReflectivity = saturate(oneMinusReflectivity);
+
+                float nDotV = saturate(dot(normalWS, viewDirWS));
+                float grazingTerm = saturate((1.0 - perceptualRoughness) + (1.0 - oneMinusReflectivity));
+                float3 fresnelColor = lerp(specularColor, grazingTerm.xxx, pow(1.0 - nDotV, 5.0));
+                fresnelColor = saturate(fresnelColor * _FresnelBoost);
+                float fresnel = saturate(GlassLuminance(fresnelColor));
 
                 float3 reflectionDirWS = reflect(-viewDirWS, normalWS);
-                float iblLod = (1.0 - saturate(_Smoothness)) * 6.0;
+                float envPerceptualRoughness = perceptualRoughness * (1.7 - 0.7 * perceptualRoughness);
+                float iblLod = envPerceptualRoughness * 6.0;
                 half4 encodedIbl = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectionDirWS, iblLod);
                 float3 envReflection = DecodeHDR(encodedIbl, unity_SpecCube0_HDR);
+                if (unity_SpecCube0_BoxMin.w < 0.99999)
+                {
+                    half4 encodedIbl1 = UNITY_SAMPLE_TEXCUBE_SAMPLER_LOD(unity_SpecCube1, unity_SpecCube0, reflectionDirWS, iblLod);
+                    float3 envReflection1 = DecodeHDR(encodedIbl1, unity_SpecCube1_HDR);
+                    envReflection = lerp(envReflection1, envReflection, unity_SpecCube0_BoxMin.w);
+                }
 
                 float3 lightDirWS = normalize(UnityWorldSpaceLightDir(input.worldPos));
                 float3 halfDirWS = normalize(lightDirWS + viewDirWS);
                 float nDotL = saturate(dot(normalWS, lightDirWS));
                 float nDotH = saturate(dot(normalWS, halfDirWS));
-                float specPower = lerp(16.0, 8192.0, saturate(_Smoothness));
-                float directSpecularFactor = pow(nDotH, specPower) * nDotL;
-                float3 directSpecular = directSpecularFactor * _LightColor0.rgb * _SpecularStrength;
+                float vDotH = saturate(dot(viewDirWS, halfDirWS));
+                float D = GlassDistributionGGX(nDotH, roughnessLinear);
+                float G = GlassGeometrySmith(nDotL, nDotV, roughnessLinear);
+                float3 Fh = GlassSchlickFresnelColor(vDotH, specularColor);
+                float3 specularBrdf = (D * G * Fh) / max(4.0 * nDotL * nDotV, 1e-4);
+                float3 directSpecular = specularBrdf * nDotL * _LightColor0.rgb * _SpecularStrength;
 
-                float3 reflectionColor = (envReflection * _EnvReflectionStrength + directSpecular) * _ReflectionTint.rgb;
+                float surfaceReduction = 1.0 / (roughnessLinear * roughnessLinear + 1.0);
+                float horizon = min(1.0 + dot(reflectionDirWS, normalWS), 1.0);
+                float3 reflectionAdjust = fresnelColor * surfaceReduction * horizon * horizon;
+
+                float3 reflectionColor = envReflection * _EnvReflectionStrength * reflectionAdjust + directSpecular;
                 float3 reflectionAbsorption = GlassComputeTransmittance(sigma, absorptionThickness * 2.0);
                 reflectionColor *= lerp(1.0.xxx, reflectionAbsorption, saturate(_ReflectionAbsorption));
 
                 float3 transmittedColor = sceneColor * transmittance;
+                float3 transmissionWeight = saturate((1.0.xxx - reflectionAdjust) + _TransmissionAtGrazing * reflectionAdjust);
+                transmissionWeight *= oneMinusReflectivity;
+                float3 reflectionWeight = saturate(1.0.xxx - transmissionWeight);
                 float3 composedColor = reflectionColor * reflectionWeight + transmittedColor * transmissionWeight;
                 float3 finalColor = lerp(sceneColor, composedColor, saturate(_BaseTint.a));
 
