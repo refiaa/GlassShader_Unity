@@ -7,6 +7,7 @@ Shader "refiaa/glass"
         _TransmissionColorAtDistance("Transmittance At Reference Distance", Color) = (0.97647, 1.00000, 0.99608, 1)
         _ReferenceDistance("Reference Distance (Meters)", Range(0.001, 0.250)) = 0.010
         _TransmittanceInfluence("Transmittance Influence", Range(0.000, 1.000)) = 0.350
+        _TransmittanceCurvePower("Transmittance Curve Power", Range(0.250, 4.000)) = 1.000
         _ThicknessScale("Thickness Scale", Range(0.010, 10.000)) = 0.500
         _ThicknessBias("Thickness Bias (Meters)", Range(-0.020, 0.020)) = 0.020
         _MaxThickness("Max Thickness (Meters)", Range(0.001, 2.000)) = 0.200
@@ -141,6 +142,7 @@ Shader "refiaa/glass"
             float4 _MetallicMap_ST;
             float _ReferenceDistance;
             float _TransmittanceInfluence;
+            float _TransmittanceCurvePower;
             float _ThicknessScale;
             float _ThicknessBias;
             float _MaxThickness;
@@ -491,9 +493,13 @@ Shader "refiaa/glass"
 
                 float3 sigma = GlassSigmaFromReferenceColor(_TransmissionColorAtDistance.rgb, _ReferenceDistance);
                 sigma *= saturate(_TransmittanceInfluence);
-                float3 transmittance = GlassComputeTransmittance(sigma, absorptionThickness);
+                float maxThicknessSafe = max(_MaxThickness, 1e-5);
+                float curvePower = max(_TransmittanceCurvePower, 1e-4);
+                float thicknessCurve01 = pow(saturate(absorptionThickness / maxThicknessSafe), curvePower);
+                float curvedAbsorptionThickness = thicknessCurve01 * maxThicknessSafe;
+                float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
-                float normalizedThickness = absorptionThickness / max(_MaxThickness, 1e-5);
+                float normalizedThickness = absorptionThickness / maxThicknessSafe;
                 float refractionScale = _RefractionStrength * (0.25 + 0.75 * saturate(normalizedThickness));
                 refractionScale *= nearFade;
                 if (_ScreenEdgeFadePixels > 0.01)
@@ -552,7 +558,7 @@ Shader "refiaa/glass"
                 float3 reflectionAdjust = fresnelColor * surfaceReduction * horizon * horizon;
 
                 float3 reflectionColor = envReflection * _EnvReflectionStrength * reflectionAdjust + directSpecular;
-                float3 reflectionAbsorption = GlassComputeTransmittance(sigma, absorptionThickness * 2.0);
+                float3 reflectionAbsorption = GlassComputeTransmittance(sigma, curvedAbsorptionThickness * 2.0);
                 reflectionColor *= lerp(1.0.xxx, reflectionAbsorption, saturate(_ReflectionAbsorption));
 
                 float3 transmittedColor = sceneColor * transmittance;

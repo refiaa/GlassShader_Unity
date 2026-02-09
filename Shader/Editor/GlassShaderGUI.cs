@@ -16,6 +16,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent TransmittanceAtDistance = new GUIContent("Transmittance At Reference Distance");
         public static readonly GUIContent ReferenceDistance = new GUIContent("Reference Distance (Meters)");
         public static readonly GUIContent TransmittanceInfluence = new GUIContent("Transmittance Influence");
+        public static readonly GUIContent TransmittanceCurvePower = new GUIContent("Transmittance Curve Power");
         public static readonly GUIContent ThicknessScale = new GUIContent("Thickness Scale");
         public static readonly GUIContent ThicknessBias = new GUIContent("Thickness Bias (Meters)");
         public static readonly GUIContent MaxThickness = new GUIContent("Max Thickness (Meters)");
@@ -73,6 +74,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string TransmissionColorAtDistance = "_TransmissionColorAtDistance";
         public const string ReferenceDistance = "_ReferenceDistance";
         public const string TransmittanceInfluence = "_TransmittanceInfluence";
+        public const string TransmittanceCurvePower = "_TransmittanceCurvePower";
         public const string ThicknessScale = "_ThicknessScale";
         public const string ThicknessBias = "_ThicknessBias";
         public const string MaxThickness = "_MaxThickness";
@@ -151,6 +153,7 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _transmissionColorAtDistance;
     private MaterialProperty _referenceDistance;
     private MaterialProperty _transmittanceInfluence;
+    private MaterialProperty _transmittanceCurvePower;
     private MaterialProperty _thicknessScale;
     private MaterialProperty _thicknessBias;
     private MaterialProperty _maxThickness;
@@ -276,6 +279,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _transmissionColorAtDistance, Names.TransmissionColorAtDistance, properties);
         BindProperty(ref _referenceDistance, Names.ReferenceDistance, properties);
         BindProperty(ref _transmittanceInfluence, Names.TransmittanceInfluence, properties);
+        BindProperty(ref _transmittanceCurvePower, Names.TransmittanceCurvePower, properties);
         BindProperty(ref _thicknessScale, Names.ThicknessScale, properties);
         BindProperty(ref _thicknessBias, Names.ThicknessBias, properties);
         BindProperty(ref _maxThickness, Names.MaxThickness, properties);
@@ -373,6 +377,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         DrawColor(materialEditor, _transmissionColorAtDistance, Styles.TransmittanceAtDistance);
         DrawProperty(materialEditor, _referenceDistance, Styles.ReferenceDistance);
         DrawProperty(materialEditor, _transmittanceInfluence, Styles.TransmittanceInfluence);
+        DrawProperty(materialEditor, _transmittanceCurvePower, Styles.TransmittanceCurvePower);
         DrawProperty(materialEditor, _thicknessScale, Styles.ThicknessScale);
         DrawProperty(materialEditor, _thicknessBias, Styles.ThicknessBias);
         DrawProperty(materialEditor, _maxThickness, Styles.MaxThickness);
