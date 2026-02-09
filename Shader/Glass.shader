@@ -202,11 +202,26 @@ Shader "refiaa/glass"
                 return clamp(uv, padding, 1.0 - padding);
             }
 
+            float2 GetScreenTexelSize()
+            {
+                return 1.0 / max(_ScreenParams.xy, float2(1.0, 1.0));
+            }
+
+            float SampleStereoBackDepth(float2 uv)
+            {
+                return GlassIsStereoEyeRight() ? tex2D(_UdonGlassBackDepthR, uv).r : tex2D(_UdonGlassBackDepthL, uv).r;
+            }
+
+            float3 SampleStereoSceneColor(float2 uv)
+            {
+                return GlassIsStereoEyeRight() ? tex2D(_UdonGlassSceneColorR, uv).rgb : tex2D(_UdonGlassSceneColorL, uv).rgb;
+            }
+
             float SampleBackDepthRaw(float2 uv)
             {
                 if (_UseUdonStereoTextures > 0.5)
                 {
-                    return GlassIsStereoEyeRight() ? tex2D(_UdonGlassBackDepthR, uv).r : tex2D(_UdonGlassBackDepthL, uv).r;
+                    return SampleStereoBackDepth(uv);
                 }
 
                 return tex2D(_BackDepthTex, uv).r;
@@ -252,7 +267,7 @@ Shader "refiaa/glass"
 
                 if (_DepthEdgeFixPixels > 0.01)
                 {
-                    float2 texel = 1.0 / max(_ScreenParams.xy, float2(1.0, 1.0));
+                    float2 texel = GetScreenTexelSize();
                     float2 offset = texel * _DepthEdgeFixPixels;
 
                     float2 uv1 = ClampSceneUV(uv + float2(offset.x, 0.0));
@@ -308,7 +323,7 @@ Shader "refiaa/glass"
                 {
                     if (_UseUdonStereoTextures > 0.5)
                     {
-                        return GlassIsStereoEyeRight() ? tex2D(_UdonGlassSceneColorR, uv).rgb : tex2D(_UdonGlassSceneColorL, uv).rgb;
+                        return SampleStereoSceneColor(uv);
                     }
                     return tex2D(_SceneColorTex, uv).rgb;
                 }
@@ -351,28 +366,83 @@ Shader "refiaa/glass"
                 return GlassGeometrySchlickGGX(nDotL, roughnessLinear) * GlassGeometrySchlickGGX(nDotV, roughnessLinear);
             }
 
+            void SampleSurfaceParameters(float2 baseUV, out float perceptualRoughness, out float roughnessLinear, out float metallic)
+            {
+                float2 roughnessUV = TRANSFORM_TEX(baseUV, _RoughnessMap);
+                float2 metallicUV = TRANSFORM_TEX(baseUV, _MetallicMap);
+                float roughnessMap = tex2D(_RoughnessMap, roughnessUV).r;
+                float metallicMap = tex2D(_MetallicMap, metallicUV).r;
+                float basePerceptualRoughness = saturate(1.0 - _Smoothness);
+
+                perceptualRoughness = GlassApplyMapStrength(basePerceptualRoughness, roughnessMap, _RoughnessMapStrength);
+                roughnessLinear = max(perceptualRoughness * perceptualRoughness, 0.003);
+                metallic = GlassApplyMapStrength(0.0, metallicMap, _MetallicMapStrength);
+            }
+
+            float3 ComputeNormalWS(Varyings input, float2 normalUV)
+            {
+                float3 normalTS = GlassUnpackNormalTS(_NormalMap, normalUV, _NormalScale);
+                float tangentLen2 = dot(input.tangentWS, input.tangentWS);
+                float3 normalWS = normalize(input.normalWS);
+
+                if (tangentLen2 > 1e-5)
+                {
+                    normalWS = GlassTransformTangentToWorld(normalTS, input.tangentWS, input.bitangentWS, input.normalWS);
+                }
+
+                return normalWS;
+            }
+
+            float3 SampleChromaticSceneColor(float2 refractedUV, float4 refractedGrabPos, float2 refractionOffset, float refractionScale)
+            {
+                float2 pixelSize = GetScreenTexelSize();
+                float2 chromaDir = normalize(refractionOffset + float2(1e-6, 0.0));
+                float chromaFade = saturate(refractionScale / max(_RefractionStrength, 1e-5));
+                float2 chromaOffset = chromaDir * (_ChromaticAberration * pixelSize * chromaFade);
+
+                float2 uvR = ClampSceneUV(refractedUV + chromaOffset);
+                float2 uvB = ClampSceneUV(refractedUV - chromaOffset);
+                float4 grabPosR = refractedGrabPos;
+                float4 grabPosB = refractedGrabPos;
+                grabPosR.xy += chromaOffset * grabPosR.w;
+                grabPosB.xy -= chromaOffset * grabPosB.w;
+
+                float3 sceneColor;
+                sceneColor.r = SampleSceneColor(uvR, grabPosR).r;
+                sceneColor.g = SampleSceneColor(refractedUV, refractedGrabPos).g;
+                sceneColor.b = SampleSceneColor(uvB, grabPosB).b;
+                return sceneColor;
+            }
+
+            float3 SampleEnvironmentReflections(float3 reflectionDirWS, float perceptualRoughness)
+            {
+                float envPerceptualRoughness = perceptualRoughness * (1.7 - 0.7 * perceptualRoughness);
+                float iblLod = envPerceptualRoughness * 6.0;
+                half4 encodedIbl = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectionDirWS, iblLod);
+                float3 envReflection = DecodeHDR(encodedIbl, unity_SpecCube0_HDR);
+
+                if (unity_SpecCube0_BoxMin.w < 0.99999)
+                {
+                    half4 encodedIbl1 = UNITY_SAMPLE_TEXCUBE_SAMPLER_LOD(unity_SpecCube1, unity_SpecCube0, reflectionDirWS, iblLod);
+                    float3 envReflection1 = DecodeHDR(encodedIbl1, unity_SpecCube1_HDR);
+                    envReflection = lerp(envReflection1, envReflection, unity_SpecCube0_BoxMin.w);
+                }
+
+                return envReflection;
+            }
+
             float4 frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 float3 viewDirWS = normalize(UnityWorldSpaceViewDir(input.worldPos));
                 float2 normalUV = TRANSFORM_TEX(input.uv, _NormalMap);
-                float2 roughnessUV = TRANSFORM_TEX(input.uv, _RoughnessMap);
-                float2 metallicUV = TRANSFORM_TEX(input.uv, _MetallicMap);
-                float roughnessMap = tex2D(_RoughnessMap, roughnessUV).r;
-                float metallicMap = tex2D(_MetallicMap, metallicUV).r;
-                float basePerceptualRoughness = saturate(1.0 - _Smoothness);
-                float perceptualRoughness = GlassApplyMapStrength(basePerceptualRoughness, roughnessMap, _RoughnessMapStrength);
-                float roughnessLinear = max(perceptualRoughness * perceptualRoughness, 0.003);
-                float metallic = GlassApplyMapStrength(0.0, metallicMap, _MetallicMapStrength);
+                float perceptualRoughness;
+                float roughnessLinear;
+                float metallic;
+                SampleSurfaceParameters(input.uv, perceptualRoughness, roughnessLinear, metallic);
 
-                float3 normalTS = GlassUnpackNormalTS(_NormalMap, normalUV, _NormalScale);
-                float tangentLen2 = dot(input.tangentWS, input.tangentWS);
-                float3 normalWS = normalize(input.normalWS);
-                if (tangentLen2 > 1e-5)
-                {
-                    normalWS = GlassTransformTangentToWorld(normalTS, input.tangentWS, input.bitangentWS, input.normalWS);
-                }
+                float3 normalWS = ComputeNormalWS(input, normalUV);
                 float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
 
                 float2 screenUV = ClampSceneUV(GlassGetScreenUV(input.screenPos));
@@ -440,21 +510,7 @@ Shader "refiaa/glass"
                 float3 sceneColor;
                 if (_UseChromaticAberration > 0.5)
                 {
-                    float2 pixelSize = 1.0 / max(_ScreenParams.xy, float2(1.0, 1.0));
-                    float2 chromaDir = normalize(refractionOffset + float2(1e-6, 0.0));
-                    float chromaFade = saturate(refractionScale / max(_RefractionStrength, 1e-5));
-                    float2 chromaOffset = chromaDir * (_ChromaticAberration * pixelSize * chromaFade);
-
-                    float2 uvR = ClampSceneUV(refractedUV + chromaOffset);
-                    float2 uvB = ClampSceneUV(refractedUV - chromaOffset);
-                    float4 grabPosR = refractedGrabPos;
-                    float4 grabPosB = refractedGrabPos;
-                    grabPosR.xy += chromaOffset * grabPosR.w;
-                    grabPosB.xy -= chromaOffset * grabPosB.w;
-
-                    sceneColor.r = SampleSceneColor(uvR, grabPosR).r;
-                    sceneColor.g = SampleSceneColor(refractedUV, refractedGrabPos).g;
-                    sceneColor.b = SampleSceneColor(uvB, grabPosB).b;
+                    sceneColor = SampleChromaticSceneColor(refractedUV, refractedGrabPos, refractionOffset, refractionScale);
                 }
                 else
                 {
@@ -475,16 +531,7 @@ Shader "refiaa/glass"
                 float fresnel = saturate(GlassLuminance(fresnelColor));
 
                 float3 reflectionDirWS = reflect(-viewDirWS, normalWS);
-                float envPerceptualRoughness = perceptualRoughness * (1.7 - 0.7 * perceptualRoughness);
-                float iblLod = envPerceptualRoughness * 6.0;
-                half4 encodedIbl = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectionDirWS, iblLod);
-                float3 envReflection = DecodeHDR(encodedIbl, unity_SpecCube0_HDR);
-                if (unity_SpecCube0_BoxMin.w < 0.99999)
-                {
-                    half4 encodedIbl1 = UNITY_SAMPLE_TEXCUBE_SAMPLER_LOD(unity_SpecCube1, unity_SpecCube0, reflectionDirWS, iblLod);
-                    float3 envReflection1 = DecodeHDR(encodedIbl1, unity_SpecCube1_HDR);
-                    envReflection = lerp(envReflection1, envReflection, unity_SpecCube0_BoxMin.w);
-                }
+                float3 envReflection = SampleEnvironmentReflections(reflectionDirWS, perceptualRoughness);
 
                 float3 lightDirWS = normalize(UnityWorldSpaceLightDir(input.worldPos));
                 float3 halfDirWS = normalize(lightDirWS + viewDirWS);

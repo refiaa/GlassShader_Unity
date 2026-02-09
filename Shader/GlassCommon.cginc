@@ -39,19 +39,22 @@ inline float3 GlassComputeTransmittance(float3 sigma, float thickness)
     return exp(-sigma * max(thickness, 0.0));
 }
 
-inline float GlassSchlickFresnel(float cosTheta, float f0)
+inline float GlassOneMinusCosPow5(float cosTheta)
 {
     float oneMinusCos = 1.0 - saturate(cosTheta);
     float oneMinusCos2 = oneMinusCos * oneMinusCos;
-    float oneMinusCos5 = oneMinusCos2 * oneMinusCos2 * oneMinusCos;
+    return oneMinusCos2 * oneMinusCos2 * oneMinusCos;
+}
+
+inline float GlassSchlickFresnel(float cosTheta, float f0)
+{
+    float oneMinusCos5 = GlassOneMinusCosPow5(cosTheta);
     return f0 + (1.0 - f0) * oneMinusCos5;
 }
 
 inline float3 GlassSchlickFresnelColor(float cosTheta, float3 f0)
 {
-    float oneMinusCos = 1.0 - saturate(cosTheta);
-    float oneMinusCos2 = oneMinusCos * oneMinusCos;
-    float oneMinusCos5 = oneMinusCos2 * oneMinusCos2 * oneMinusCos;
+    float oneMinusCos5 = GlassOneMinusCosPow5(cosTheta);
     return f0 + (1.0.xxx - f0) * oneMinusCos5;
 }
 
