@@ -1,4 +1,4 @@
-Shader "GlassShader_Unity/GlassHyperRealPC"
+Shader "refiaa/glass"
 {
     Properties
     {
@@ -463,5 +463,6 @@ Shader "GlassShader_Unity/GlassHyperRealPC"
         }
     }
 
+    CustomEditor "GlassHyperRealPCShaderGUI"
     Fallback "Transparent/VertexLit"
 }
