@@ -38,8 +38,6 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent RefractionStrength = new GUIContent("Refraction Strength");
         public static readonly GUIContent UseChromaticAberration = new GUIContent("Use Chromatic Aberration");
         public static readonly GUIContent ChromaticAberration = new GUIContent("Chromatic Aberration (Pixels)");
-        public static readonly GUIContent DispersionStrength = new GUIContent("Dispersion Strength");
-        public static readonly GUIContent RefractionRoughBlur = new GUIContent("Refraction Rough Blur (Pixels)");
         public static readonly GUIContent RefractionScreenEdgeFade = new GUIContent("Refraction Screen Edge Fade (Pixels)");
 
         public static readonly GUIContent IndexOfRefraction = new GUIContent("Index Of Refraction");
@@ -106,8 +104,6 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string RefractionStrength = "_RefractionStrength";
         public const string UseChromaticAberration = "_UseChromaticAberration";
         public const string ChromaticAberration = "_ChromaticAberration";
-        public const string DispersionStrength = "_DispersionStrength";
-        public const string RefractionRoughBlur = "_RefractionRoughBlur";
         public const string ScreenEdgeFadePixels = "_ScreenEdgeFadePixels";
 
         public const string Ior = "_IOR";
@@ -195,8 +191,6 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _refractionStrength;
     private MaterialProperty _useChromaticAberration;
     private MaterialProperty _chromaticAberration;
-    private MaterialProperty _dispersionStrength;
-    private MaterialProperty _refractionRoughBlur;
     private MaterialProperty _screenEdgeFadePixels;
 
     private MaterialProperty _ior;
@@ -331,8 +325,6 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _refractionStrength, Names.RefractionStrength, properties);
         BindProperty(ref _useChromaticAberration, Names.UseChromaticAberration, properties);
         BindProperty(ref _chromaticAberration, Names.ChromaticAberration, properties);
-        BindProperty(ref _dispersionStrength, Names.DispersionStrength, properties);
-        BindProperty(ref _refractionRoughBlur, Names.RefractionRoughBlur, properties);
         BindProperty(ref _screenEdgeFadePixels, Names.ScreenEdgeFadePixels, properties);
 
         BindProperty(ref _ior, Names.Ior, properties);
@@ -449,10 +441,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         using (new EditorGUI.DisabledScope(!GetToggleValue(_useChromaticAberration)))
         {
             DrawProperty(materialEditor, _chromaticAberration, Styles.ChromaticAberration);
-            DrawProperty(materialEditor, _dispersionStrength, Styles.DispersionStrength);
         }
 
-        DrawProperty(materialEditor, _refractionRoughBlur, Styles.RefractionRoughBlur);
         DrawProperty(materialEditor, _screenEdgeFadePixels, Styles.RefractionScreenEdgeFade);
         DrawProperty(materialEditor, _fresnelBoost, Styles.FresnelBoost);
         DrawProperty(materialEditor, _transmissionAtGrazing, Styles.TransmissionAtGrazing);
