@@ -4,12 +4,12 @@ Shader "GlassShader_Unity/GlassHyperRealPC"
     {
         [Header(Core Absorption)]
         _BaseTint("Reserved RGB / Effect Blend (A)", Color) = (1, 1, 1, 1)
-        _TransmissionColorAtDistance("Transmittance At Reference Distance", Color) = (0.985, 0.998, 0.985, 1)
+        _TransmissionColorAtDistance("Transmittance At Reference Distance", Color) = (0.97647, 1.00000, 0.99608, 1)
         _ReferenceDistance("Reference Distance (Meters)", Range(0.001, 0.250)) = 0.010
-        _ThicknessScale("Thickness Scale", Range(0.010, 10.000)) = 1.000
-        _ThicknessBias("Thickness Bias (Meters)", Range(-0.020, 0.020)) = 0.000
+        _ThicknessScale("Thickness Scale", Range(0.010, 10.000)) = 0.500
+        _ThicknessBias("Thickness Bias (Meters)", Range(-0.020, 0.020)) = 0.020
         _MaxThickness("Max Thickness (Meters)", Range(0.001, 2.000)) = 0.200
-        _FallbackThickness("Fallback Thickness (Meters)", Range(0.0001, 0.1000)) = 0.0030
+        _FallbackThickness("Fallback Thickness (Meters)", Range(0.0001, 0.1000)) = 0.0001
         [Toggle] _FallbackUseAngle("Fallback Use Angle Correction", Float) = 1
         [Toggle] _UseBoundsThicknessFallback("Use Bounds Thickness Fallback", Float) = 1
         _BoundsFallbackBlend("Bounds Fallback Blend", Range(0.000, 1.000)) = 1.000
@@ -23,20 +23,20 @@ Shader "GlassShader_Unity/GlassHyperRealPC"
         _DepthEdgeFixPixels("Back Depth Edge Fix Radius (Pixels)", Range(0.0, 3.0)) = 1.500
 
         [Header(Refraction)]
-        _RefractionStrength("Refraction Strength", Range(0.000, 0.200)) = 0.012
-        [Toggle] _UseChromaticAberration("Use Chromatic Aberration", Float) = 0
-        _ChromaticAberration("Chromatic Aberration (Pixels)", Range(0.000, 3.000)) = 0.400
-        _ScreenEdgeFadePixels("Refraction Screen Edge Fade (Pixels)", Range(0.0, 32.0)) = 8.000
+        _RefractionStrength("Refraction Strength", Range(0.000, 0.200)) = 0.010
+        [Toggle] _UseChromaticAberration("Use Chromatic Aberration", Float) = 1
+        _ChromaticAberration("Chromatic Aberration (Pixels)", Range(0.000, 3.000)) = 3.000
+        _ScreenEdgeFadePixels("Refraction Screen Edge Fade (Pixels)", Range(0.0, 32.0)) = 32.000
 
         [Header(Reflection)]
-        _IOR("Index Of Refraction", Range(1.000, 2.000)) = 1.520
+        _IOR("Index Of Refraction", Range(1.000, 2.000)) = 1.000
         _ReflectionTint("Reflection Tint", Color) = (1, 1, 1, 1)
-        _EnvReflectionStrength("Environment Reflection Strength", Range(0.000, 4.000)) = 0.200
+        _EnvReflectionStrength("Environment Reflection Strength", Range(0.000, 4.000)) = 1.500
         _SpecularStrength("Direct Specular Strength", Range(0.000, 4.000)) = 0.250
-        _Smoothness("Smoothness", Range(0.000, 1.000)) = 0.950
+        _Smoothness("Smoothness", Range(0.000, 1.000)) = 1.000
         _FresnelBoost("Fresnel Boost", Range(0.000, 2.000)) = 0.850
         _TransmissionAtGrazing("Transmission At Grazing", Range(0.000, 1.000)) = 0.300
-        _ReflectionAbsorption("Reflection Absorption Coupling", Range(0.000, 1.000)) = 0.250
+        _ReflectionAbsorption("Reflection Absorption Coupling", Range(0.000, 1.000)) = 0.500
 
         [Header(Surface Detail)]
         _NormalMap("Normal Map", 2D) = "bump" {}
