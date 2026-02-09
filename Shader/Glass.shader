@@ -40,6 +40,14 @@ Shader "refiaa/glass"
         _TransmissionAtGrazing("Transmission At Grazing", Range(0.000, 1.000)) = 0.300
         _ReflectionAbsorption("Reflection Absorption Coupling", Range(0.000, 1.000)) = 0.500
 
+        [Header(Mesh Edge Highlight)]
+        [Toggle] _UseMeshEdge("Use Mesh Edge Highlight", Float) = 0
+        _MeshEdgeColor("Mesh Edge Color", Color) = (1, 1, 1, 1)
+        _MeshEdgeWidth("Mesh Edge Width", Range(0.000, 8.000)) = 1.500
+        _MeshEdgeThreshold("Mesh Edge Threshold", Range(0.000, 1.000)) = 0.000
+        _MeshEdgeSoftness("Mesh Edge Softness", Range(0.001, 1.000)) = 0.100
+        _MeshEdgeIntensity("Mesh Edge Intensity", Range(0.000, 4.000)) = 1.000
+
         [Header(Surface Detail)]
         _NormalMap("Normal Map", 2D) = "bump" {}
         _NormalScale("Normal Scale", Range(0.000, 2.000)) = 1.000
@@ -107,6 +115,8 @@ Shader "refiaa/glass"
                 float3 normal : NORMAL;
                 float4 tangent : TANGENT;
                 float2 uv : TEXCOORD0;
+                float4 edgeData0 : TEXCOORD3;
+                float2 edgeData1 : TEXCOORD4;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -120,6 +130,8 @@ Shader "refiaa/glass"
                 float3 normalWS : TEXCOORD4;
                 float3 tangentWS : TEXCOORD5;
                 float3 bitangentWS : TEXCOORD6;
+                float3 barycentric : TEXCOORD7;
+                float3 edgeKeep : TEXCOORD8;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -169,6 +181,12 @@ Shader "refiaa/glass"
             float _FresnelBoost;
             float _TransmissionAtGrazing;
             float _ReflectionAbsorption;
+            float _UseMeshEdge;
+            float4 _MeshEdgeColor;
+            float _MeshEdgeWidth;
+            float _MeshEdgeThreshold;
+            float _MeshEdgeSoftness;
+            float _MeshEdgeIntensity;
             float _NormalScale;
             float _RoughnessMapStrength;
             float _MetallicMapStrength;
@@ -196,6 +214,8 @@ Shader "refiaa/glass"
                 output.tangentWS = UnityObjectToWorldDir(input.tangent.xyz);
                 float tangentSign = input.tangent.w * unity_WorldTransformParams.w;
                 output.bitangentWS = cross(output.normalWS, output.tangentWS) * tangentSign;
+                output.barycentric = input.edgeData0.xyz;
+                output.edgeKeep = float3(input.edgeData0.w, input.edgeData1.x, input.edgeData1.y);
 
                 return output;
             }
@@ -435,6 +455,20 @@ Shader "refiaa/glass"
                 return envReflection;
             }
 
+            float GlassComputeMeshEdgeMask(float3 barycentric, float3 edgeKeep)
+            {
+                float widthPx = max(_MeshEdgeWidth, 0.0);
+                float softnessPx = max(_MeshEdgeSoftness, 0.001);
+                float3 fw = max(fwidth(barycentric), 1e-5.xxx);
+                float3 edgeLo = fw * widthPx;
+                float3 edgeHi = edgeLo + fw * softnessPx;
+                float3 edge3 = 1.0 - smoothstep(edgeLo, edgeHi, barycentric);
+                edge3 *= saturate(edgeKeep);
+                float edge = max(edge3.x, max(edge3.y, edge3.z));
+                float threshold = saturate(_MeshEdgeThreshold);
+                return saturate((edge - threshold) / max(1.0 - threshold, 1e-4));
+            }
+
             float4 frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -567,6 +601,18 @@ Shader "refiaa/glass"
                 float3 reflectionWeight = saturate(1.0.xxx - transmissionWeight);
                 float3 composedColor = reflectionColor * reflectionWeight + transmittedColor * transmissionWeight;
                 float3 finalColor = lerp(sceneColor, composedColor, saturate(_BaseTint.a));
+
+                if (_UseMeshEdge > 0.5)
+                {
+                    float barySum = input.barycentric.x + input.barycentric.y + input.barycentric.z;
+                    float baryMin = min(input.barycentric.x, min(input.barycentric.y, input.barycentric.z));
+                    float baryMax = max(input.barycentric.x, max(input.barycentric.y, input.barycentric.z));
+                    float edgeDataValid = 1.0 - step(0.01, abs(barySum - 1.0));
+                    edgeDataValid *= step(-0.001, baryMin) * step(baryMax, 1.001);
+                    float edgeMask = GlassComputeMeshEdgeMask(input.barycentric, input.edgeKeep) * edgeDataValid;
+                    float edgeWeight = saturate(edgeMask * _MeshEdgeColor.a * _MeshEdgeIntensity);
+                    finalColor = lerp(finalColor, _MeshEdgeColor.rgb, edgeWeight);
+                }
 
                 #if defined(_DEBUGVIEW_THICKNESS)
                     finalColor = GlassHeatColor(normalizedThickness);

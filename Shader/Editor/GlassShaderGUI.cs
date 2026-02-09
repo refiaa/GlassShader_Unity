@@ -46,6 +46,12 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent FresnelBoost = new GUIContent("Fresnel Boost");
         public static readonly GUIContent TransmissionAtGrazing = new GUIContent("Transmission At Grazing");
         public static readonly GUIContent ReflectionAbsorptionCoupling = new GUIContent("Reflection Absorption Coupling");
+        public static readonly GUIContent UseMeshEdge = new GUIContent("Use Mesh Edge Highlight");
+        public static readonly GUIContent MeshEdgeColor = new GUIContent("Mesh Edge Color");
+        public static readonly GUIContent MeshEdgeWidth = new GUIContent("Mesh Edge Width");
+        public static readonly GUIContent MeshEdgeThreshold = new GUIContent("Mesh Edge Threshold");
+        public static readonly GUIContent MeshEdgeSoftness = new GUIContent("Mesh Edge Softness");
+        public static readonly GUIContent MeshEdgeIntensity = new GUIContent("Mesh Edge Intensity");
 
         public static readonly GUIContent NormalMap = new GUIContent("Normal Map");
         public static readonly GUIContent NormalScale = new GUIContent("Normal Scale");
@@ -104,6 +110,12 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string FresnelBoost = "_FresnelBoost";
         public const string TransmissionAtGrazing = "_TransmissionAtGrazing";
         public const string ReflectionAbsorption = "_ReflectionAbsorption";
+        public const string UseMeshEdge = "_UseMeshEdge";
+        public const string MeshEdgeColor = "_MeshEdgeColor";
+        public const string MeshEdgeWidth = "_MeshEdgeWidth";
+        public const string MeshEdgeThreshold = "_MeshEdgeThreshold";
+        public const string MeshEdgeSoftness = "_MeshEdgeSoftness";
+        public const string MeshEdgeIntensity = "_MeshEdgeIntensity";
 
         public const string NormalMap = "_NormalMap";
         public const string NormalScale = "_NormalScale";
@@ -183,6 +195,12 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _fresnelBoost;
     private MaterialProperty _transmissionAtGrazing;
     private MaterialProperty _reflectionAbsorption;
+    private MaterialProperty _useMeshEdge;
+    private MaterialProperty _meshEdgeColor;
+    private MaterialProperty _meshEdgeWidth;
+    private MaterialProperty _meshEdgeThreshold;
+    private MaterialProperty _meshEdgeSoftness;
+    private MaterialProperty _meshEdgeIntensity;
 
     private MaterialProperty _normalMap;
     private MaterialProperty _normalScale;
@@ -309,6 +327,12 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _fresnelBoost, Names.FresnelBoost, properties);
         BindProperty(ref _transmissionAtGrazing, Names.TransmissionAtGrazing, properties);
         BindProperty(ref _reflectionAbsorption, Names.ReflectionAbsorption, properties);
+        BindProperty(ref _useMeshEdge, Names.UseMeshEdge, properties);
+        BindProperty(ref _meshEdgeColor, Names.MeshEdgeColor, properties);
+        BindProperty(ref _meshEdgeWidth, Names.MeshEdgeWidth, properties);
+        BindProperty(ref _meshEdgeThreshold, Names.MeshEdgeThreshold, properties);
+        BindProperty(ref _meshEdgeSoftness, Names.MeshEdgeSoftness, properties);
+        BindProperty(ref _meshEdgeIntensity, Names.MeshEdgeIntensity, properties);
 
         BindProperty(ref _normalMap, Names.NormalMap, properties);
         BindProperty(ref _normalScale, Names.NormalScale, properties);
@@ -388,6 +412,15 @@ public sealed class GlassShaderGUI : ShaderGUI
         DrawColor(materialEditor, _reflectionTint, Styles.ReflectionTint);
         DrawProperty(materialEditor, _envReflectionStrength, Styles.EnvReflectionStrength);
         DrawProperty(materialEditor, _specularStrength, Styles.DirectSpecularStrength);
+        DrawToggle(_useMeshEdge, Styles.UseMeshEdge);
+        using (new EditorGUI.DisabledScope(!GetToggleValue(_useMeshEdge)))
+        {
+            DrawColor(materialEditor, _meshEdgeColor, Styles.MeshEdgeColor);
+            DrawProperty(materialEditor, _meshEdgeWidth, Styles.MeshEdgeWidth);
+            DrawProperty(materialEditor, _meshEdgeThreshold, Styles.MeshEdgeThreshold);
+            DrawProperty(materialEditor, _meshEdgeSoftness, Styles.MeshEdgeSoftness);
+            DrawProperty(materialEditor, _meshEdgeIntensity, Styles.MeshEdgeIntensity);
+        }
     }
 
     private void DrawAdvancedOptics(MaterialEditor materialEditor)
@@ -532,6 +565,11 @@ public sealed class GlassShaderGUI : ShaderGUI
         if (_ior != null && _ior.floatValue <= 1.01f)
         {
             EditorGUILayout.HelpBox("Index Of Refraction is very close to 1.0; Fresnel and glass realism may look weak.", MessageType.Info);
+        }
+
+        if (GetToggleValue(_useMeshEdge))
+        {
+            EditorGUILayout.HelpBox("Mesh Edge Highlight requires baked edge data. Use Tools > Glass Shader > Bake Selected Mesh Edge Data.", MessageType.Info);
         }
     }
 
