@@ -88,7 +88,6 @@ Shader "refiaa/glass"
 
         GrabPass
         {
-            "_GlassGrabTex"
         }
 
         Pass
@@ -140,7 +139,7 @@ Shader "refiaa/glass"
             sampler2D _MetallicMap;
             sampler2D _BackDepthTex;
             sampler2D _SceneColorTex;
-            sampler2D _GlassGrabTex;
+            sampler2D _GrabTexture;
             sampler2D _UdonGlassBackDepthL;
             sampler2D _UdonGlassBackDepthR;
             sampler2D _UdonGlassSceneColorL;
@@ -313,7 +312,7 @@ Shader "refiaa/glass"
             {
                 float invW = 1.0 / max(grabPos.w, 1e-5);
                 float2 uv = ClampSceneUV(grabPos.xy * invW);
-                return tex2D(_GlassGrabTex, uv).rgb;
+                return tex2D(_GrabTexture, uv).rgb;
             }
 
             float ComputeBoundsFallbackThickness(float3 worldPos, float3 viewDirWS, float3 boundsMinOS, float3 boundsMaxOS)
@@ -356,7 +355,7 @@ Shader "refiaa/glass"
                 {
                     if (grabPos.w <= 1e-5)
                     {
-                        return tex2D(_GlassGrabTex, ClampSceneUV(uv)).rgb;
+                        return tex2D(_GrabTexture, ClampSceneUV(uv)).rgb;
                     }
                     return SampleGrabColor(grabPos);
                 }
