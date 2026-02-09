@@ -78,6 +78,7 @@ Shader "refiaa/glass"
             "RenderType" = "Transparent"
             "IgnoreProjector" = "True"
             "VRCFallback" = "Transparent"
+            "DisableBatching" = "True"
         }
 
         LOD 400
@@ -521,19 +522,19 @@ Shader "refiaa/glass"
                 }
                 thickness *= nearFade;
 
-                float absorptionThickness = thickness * lerp(saturate(_FallbackAbsorptionScale), 1.0, useExactThickness);
-                absorptionThickness = clamp(absorptionThickness, 0.0, _MaxThickness);
+                float absorptionThicknessRaw = max(thickness * lerp(saturate(_FallbackAbsorptionScale), 1.0, useExactThickness), 0.0);
+                float absorptionThickness = clamp(absorptionThicknessRaw, 0.0, _MaxThickness);
 
                 float3 sigma = GlassSigmaFromReferenceColor(_TransmissionColorAtDistance.rgb, _ReferenceDistance);
                 sigma *= saturate(_TransmittanceInfluence);
                 float maxThicknessSafe = max(_MaxThickness, 1e-5);
-                float curvePower = max(_TransmittanceCurvePower, 1e-4);
-                float thicknessCurve01 = pow(saturate(absorptionThickness / maxThicknessSafe), curvePower);
+                float normalizedAbsorptionRaw = GlassNormalizeThickness(absorptionThicknessRaw, maxThicknessSafe);
+                float thicknessCurve01 = GlassApplyTransmittanceCurve(normalizedAbsorptionRaw, _TransmittanceCurvePower);
                 float curvedAbsorptionThickness = thicknessCurve01 * maxThicknessSafe;
                 float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
-                float normalizedThickness = absorptionThickness / maxThicknessSafe;
-                float refractionScale = _RefractionStrength * (0.25 + 0.75 * saturate(normalizedThickness));
+                float normalizedThickness = saturate(GlassNormalizeThickness(absorptionThickness, maxThicknessSafe));
+                float refractionScale = _RefractionStrength * (0.25 + 0.75 * normalizedThickness);
                 refractionScale *= nearFade;
                 if (_ScreenEdgeFadePixels > 0.01)
                 {

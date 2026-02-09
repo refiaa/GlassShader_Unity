@@ -39,6 +39,27 @@ inline float3 GlassComputeTransmittance(float3 sigma, float thickness)
     return exp(-sigma * max(thickness, 0.0));
 }
 
+inline float GlassNormalizeThickness(float thickness, float maxThickness)
+{
+    float safeMax = GlassSafePositive(maxThickness);
+    return max(thickness, 0.0) / safeMax;
+}
+
+inline float GlassApplyTransmittanceCurve(float normalizedThickness, float curvePower)
+{
+    float x = max(normalizedThickness, 0.0);
+    float p = max(curvePower, 1e-4);
+    float shaped = pow(x, p);
+
+    if (p <= 1.0)
+    {
+        return shaped;
+    }
+
+    // For p > 1, progressively boost thick regions so darkening accelerates with thickness.
+    return shaped * (1.0 + (p - 1.0) * x);
+}
+
 inline float GlassOneMinusCosPow5(float cosTheta)
 {
     float oneMinusCos = 1.0 - saturate(cosTheta);
