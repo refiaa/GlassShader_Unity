@@ -192,13 +192,19 @@ Shader "refiaa/glass"
                 return clamp(uv, padding, 1.0 - padding);
             }
 
-            float SampleBackDepth(float2 uv)
+            float SampleBackDepthRaw(float2 uv)
             {
-                float rawDepth = tex2D(_BackDepthTex, uv).r;
                 if (_UseUdonStereoTextures > 0.5)
                 {
-                    rawDepth = GlassIsStereoEyeRight() ? tex2D(_UdonGlassBackDepthR, uv).r : tex2D(_UdonGlassBackDepthL, uv).r;
+                    return GlassIsStereoEyeRight() ? tex2D(_UdonGlassBackDepthR, uv).r : tex2D(_UdonGlassBackDepthL, uv).r;
                 }
+
+                return tex2D(_BackDepthTex, uv).r;
+            }
+
+            float SampleBackDepth(float2 uv)
+            {
+                float rawDepth = SampleBackDepthRaw(uv);
 
                 if (_BackDepthIsLinear > 0.5)
                 {
@@ -211,6 +217,22 @@ Shader "refiaa/glass"
             float BackDepthIsValid(float backDepth, float frontDepth)
             {
                 return step(frontDepth + 1e-4, backDepth) * step(1e-5, backDepth);
+            }
+
+            void UpdateBestBackDepth(float depth, float valid, inout float bestDepth, inout float bestValid)
+            {
+                if (valid > 0.5 && (bestValid < 0.5 || depth > bestDepth))
+                {
+                    bestDepth = depth;
+                    bestValid = valid;
+                }
+            }
+
+            void SampleAndUpdateBackDepth(float2 uv, float frontDepth, inout float bestDepth, inout float bestValid)
+            {
+                float depth = SampleBackDepth(uv);
+                float valid = BackDepthIsValid(depth, frontDepth);
+                UpdateBestBackDepth(depth, valid, bestDepth, bestValid);
             }
 
             float SampleBackDepthRobust(float2 uv, float frontDepth, out float valid)
@@ -228,37 +250,10 @@ Shader "refiaa/glass"
                     float2 uv3 = ClampSceneUV(uv + float2(0.0, offset.y));
                     float2 uv4 = ClampSceneUV(uv - float2(0.0, offset.y));
 
-                    float d1 = SampleBackDepth(uv1);
-                    float v1 = BackDepthIsValid(d1, frontDepth);
-                    if (v1 > 0.5 && (bestValid < 0.5 || d1 > bestDepth))
-                    {
-                        bestDepth = d1;
-                        bestValid = v1;
-                    }
-
-                    float d2 = SampleBackDepth(uv2);
-                    float v2 = BackDepthIsValid(d2, frontDepth);
-                    if (v2 > 0.5 && (bestValid < 0.5 || d2 > bestDepth))
-                    {
-                        bestDepth = d2;
-                        bestValid = v2;
-                    }
-
-                    float d3 = SampleBackDepth(uv3);
-                    float v3 = BackDepthIsValid(d3, frontDepth);
-                    if (v3 > 0.5 && (bestValid < 0.5 || d3 > bestDepth))
-                    {
-                        bestDepth = d3;
-                        bestValid = v3;
-                    }
-
-                    float d4 = SampleBackDepth(uv4);
-                    float v4 = BackDepthIsValid(d4, frontDepth);
-                    if (v4 > 0.5 && (bestValid < 0.5 || d4 > bestDepth))
-                    {
-                        bestDepth = d4;
-                        bestValid = v4;
-                    }
+                    SampleAndUpdateBackDepth(uv1, frontDepth, bestDepth, bestValid);
+                    SampleAndUpdateBackDepth(uv2, frontDepth, bestDepth, bestValid);
+                    SampleAndUpdateBackDepth(uv3, frontDepth, bestDepth, bestValid);
+                    SampleAndUpdateBackDepth(uv4, frontDepth, bestDepth, bestValid);
                 }
 
                 valid = bestValid;
@@ -301,12 +296,11 @@ Shader "refiaa/glass"
             {
                 if (_UseSceneColorTexture > 0.5)
                 {
-                    float3 color = tex2D(_SceneColorTex, uv).rgb;
                     if (_UseUdonStereoTextures > 0.5)
                     {
-                        color = GlassIsStereoEyeRight() ? tex2D(_UdonGlassSceneColorR, uv).rgb : tex2D(_UdonGlassSceneColorL, uv).rgb;
+                        return GlassIsStereoEyeRight() ? tex2D(_UdonGlassSceneColorR, uv).rgb : tex2D(_UdonGlassSceneColorL, uv).rgb;
                     }
-                    return color;
+                    return tex2D(_SceneColorTex, uv).rgb;
                 }
 
                 if (_UseGrabPassFallback > 0.5)
@@ -463,6 +457,6 @@ Shader "refiaa/glass"
         }
     }
 
-    CustomEditor "GlassHyperRealPCShaderGUI"
+    CustomEditor "GlassShaderGUI"
     Fallback "Transparent/VertexLit"
 }

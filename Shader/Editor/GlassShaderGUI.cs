@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-public sealed class GlassHyperRealPCShaderGUI : ShaderGUI
+public sealed class GlassShaderGUI : ShaderGUI
 {
     private static class Styles
     {
@@ -120,6 +120,14 @@ public sealed class GlassHyperRealPCShaderGUI : ShaderGUI
         public const string Fresnel = "_DEBUGVIEW_FRESNEL";
     }
 
+    private static readonly string[] DebugKeywordOrder =
+    {
+        DebugKeywords.None,
+        DebugKeywords.Thickness,
+        DebugKeywords.Transmittance,
+        DebugKeywords.Fresnel
+    };
+
     private MaterialProperty _baseTint;
     private MaterialProperty _transmissionColorAtDistance;
     private MaterialProperty _referenceDistance;
@@ -210,52 +218,57 @@ public sealed class GlassHyperRealPCShaderGUI : ShaderGUI
 
     private void FindProperties(MaterialProperty[] properties)
     {
-        _baseTint = FindProperty(Names.BaseTint, properties, false);
-        _transmissionColorAtDistance = FindProperty(Names.TransmissionColorAtDistance, properties, false);
-        _referenceDistance = FindProperty(Names.ReferenceDistance, properties, false);
-        _thicknessScale = FindProperty(Names.ThicknessScale, properties, false);
-        _thicknessBias = FindProperty(Names.ThicknessBias, properties, false);
-        _maxThickness = FindProperty(Names.MaxThickness, properties, false);
-        _fallbackThickness = FindProperty(Names.FallbackThickness, properties, false);
-        _fallbackUseAngle = FindProperty(Names.FallbackUseAngle, properties, false);
-        _useBoundsThicknessFallback = FindProperty(Names.UseBoundsThicknessFallback, properties, false);
-        _boundsFallbackBlend = FindProperty(Names.BoundsFallbackBlend, properties, false);
-        _fallbackBoundsMin = FindProperty(Names.FallbackBoundsMin, properties, false);
-        _fallbackBoundsMax = FindProperty(Names.FallbackBoundsMax, properties, false);
-        _fallbackAbsorptionScale = FindProperty(Names.FallbackAbsorptionScale, properties, false);
-        _minViewDot = FindProperty(Names.MinViewDot, properties, false);
-        _grazingAssistNdotV = FindProperty(Names.GrazingAssistNdotV, properties, false);
-        _grazingThicknessAssist = FindProperty(Names.GrazingThicknessAssist, properties, false);
-        _nearFadeDistance = FindProperty(Names.NearFadeDistance, properties, false);
-        _depthEdgeFixPixels = FindProperty(Names.DepthEdgeFixPixels, properties, false);
+        BindProperty(ref _baseTint, Names.BaseTint, properties);
+        BindProperty(ref _transmissionColorAtDistance, Names.TransmissionColorAtDistance, properties);
+        BindProperty(ref _referenceDistance, Names.ReferenceDistance, properties);
+        BindProperty(ref _thicknessScale, Names.ThicknessScale, properties);
+        BindProperty(ref _thicknessBias, Names.ThicknessBias, properties);
+        BindProperty(ref _maxThickness, Names.MaxThickness, properties);
+        BindProperty(ref _fallbackThickness, Names.FallbackThickness, properties);
+        BindProperty(ref _fallbackUseAngle, Names.FallbackUseAngle, properties);
+        BindProperty(ref _useBoundsThicknessFallback, Names.UseBoundsThicknessFallback, properties);
+        BindProperty(ref _boundsFallbackBlend, Names.BoundsFallbackBlend, properties);
+        BindProperty(ref _fallbackBoundsMin, Names.FallbackBoundsMin, properties);
+        BindProperty(ref _fallbackBoundsMax, Names.FallbackBoundsMax, properties);
+        BindProperty(ref _fallbackAbsorptionScale, Names.FallbackAbsorptionScale, properties);
+        BindProperty(ref _minViewDot, Names.MinViewDot, properties);
+        BindProperty(ref _grazingAssistNdotV, Names.GrazingAssistNdotV, properties);
+        BindProperty(ref _grazingThicknessAssist, Names.GrazingThicknessAssist, properties);
+        BindProperty(ref _nearFadeDistance, Names.NearFadeDistance, properties);
+        BindProperty(ref _depthEdgeFixPixels, Names.DepthEdgeFixPixels, properties);
 
-        _refractionStrength = FindProperty(Names.RefractionStrength, properties, false);
-        _useChromaticAberration = FindProperty(Names.UseChromaticAberration, properties, false);
-        _chromaticAberration = FindProperty(Names.ChromaticAberration, properties, false);
-        _screenEdgeFadePixels = FindProperty(Names.ScreenEdgeFadePixels, properties, false);
+        BindProperty(ref _refractionStrength, Names.RefractionStrength, properties);
+        BindProperty(ref _useChromaticAberration, Names.UseChromaticAberration, properties);
+        BindProperty(ref _chromaticAberration, Names.ChromaticAberration, properties);
+        BindProperty(ref _screenEdgeFadePixels, Names.ScreenEdgeFadePixels, properties);
 
-        _ior = FindProperty(Names.Ior, properties, false);
-        _reflectionTint = FindProperty(Names.ReflectionTint, properties, false);
-        _envReflectionStrength = FindProperty(Names.EnvReflectionStrength, properties, false);
-        _specularStrength = FindProperty(Names.SpecularStrength, properties, false);
-        _smoothness = FindProperty(Names.Smoothness, properties, false);
-        _fresnelBoost = FindProperty(Names.FresnelBoost, properties, false);
-        _transmissionAtGrazing = FindProperty(Names.TransmissionAtGrazing, properties, false);
-        _reflectionAbsorption = FindProperty(Names.ReflectionAbsorption, properties, false);
+        BindProperty(ref _ior, Names.Ior, properties);
+        BindProperty(ref _reflectionTint, Names.ReflectionTint, properties);
+        BindProperty(ref _envReflectionStrength, Names.EnvReflectionStrength, properties);
+        BindProperty(ref _specularStrength, Names.SpecularStrength, properties);
+        BindProperty(ref _smoothness, Names.Smoothness, properties);
+        BindProperty(ref _fresnelBoost, Names.FresnelBoost, properties);
+        BindProperty(ref _transmissionAtGrazing, Names.TransmissionAtGrazing, properties);
+        BindProperty(ref _reflectionAbsorption, Names.ReflectionAbsorption, properties);
 
-        _normalMap = FindProperty(Names.NormalMap, properties, false);
-        _normalScale = FindProperty(Names.NormalScale, properties, false);
+        BindProperty(ref _normalMap, Names.NormalMap, properties);
+        BindProperty(ref _normalScale, Names.NormalScale, properties);
 
-        _backDepthTex = FindProperty(Names.BackDepthTex, properties, false);
-        _sceneColorTex = FindProperty(Names.SceneColorTex, properties, false);
-        _useSceneColorTexture = FindProperty(Names.UseSceneColorTexture, properties, false);
-        _useBackDepthTexture = FindProperty(Names.UseBackDepthTexture, properties, false);
-        _backDepthIsLinear = FindProperty(Names.BackDepthIsLinear, properties, false);
-        _useUdonStereoTextures = FindProperty(Names.UseUdonStereoTextures, properties, false);
-        _useGrabPassFallback = FindProperty(Names.UseGrabPassFallback, properties, false);
-        _uvClamp = FindProperty(Names.UvClamp, properties, false);
+        BindProperty(ref _backDepthTex, Names.BackDepthTex, properties);
+        BindProperty(ref _sceneColorTex, Names.SceneColorTex, properties);
+        BindProperty(ref _useSceneColorTexture, Names.UseSceneColorTexture, properties);
+        BindProperty(ref _useBackDepthTexture, Names.UseBackDepthTexture, properties);
+        BindProperty(ref _backDepthIsLinear, Names.BackDepthIsLinear, properties);
+        BindProperty(ref _useUdonStereoTextures, Names.UseUdonStereoTextures, properties);
+        BindProperty(ref _useGrabPassFallback, Names.UseGrabPassFallback, properties);
+        BindProperty(ref _uvClamp, Names.UvClamp, properties);
 
-        _debugView = FindProperty(Names.DebugView, properties, false);
+        BindProperty(ref _debugView, Names.DebugView, properties);
+    }
+
+    private void BindProperty(ref MaterialProperty property, string name, MaterialProperty[] properties)
+    {
+        property = FindProperty(name, properties, false);
     }
 
     private static void DrawSectionHeader(GUIContent title)
@@ -439,25 +452,17 @@ public sealed class GlassHyperRealPCShaderGUI : ShaderGUI
 
     private static void ApplyDebugKeywords(Material material, int debugView)
     {
-        material.DisableKeyword(DebugKeywords.None);
-        material.DisableKeyword(DebugKeywords.Thickness);
-        material.DisableKeyword(DebugKeywords.Transmittance);
-        material.DisableKeyword(DebugKeywords.Fresnel);
-
-        switch (debugView)
+        for (int i = 0; i < DebugKeywordOrder.Length; i++)
         {
-            case 1:
-                material.EnableKeyword(DebugKeywords.Thickness);
-                break;
-            case 2:
-                material.EnableKeyword(DebugKeywords.Transmittance);
-                break;
-            case 3:
-                material.EnableKeyword(DebugKeywords.Fresnel);
-                break;
-            default:
-                material.EnableKeyword(DebugKeywords.None);
-                break;
+            material.DisableKeyword(DebugKeywordOrder[i]);
         }
+
+        int keywordIndex = debugView;
+        if (keywordIndex < 0 || keywordIndex >= DebugKeywordOrder.Length)
+        {
+            keywordIndex = 0;
+        }
+
+        material.EnableKeyword(DebugKeywordOrder[keywordIndex]);
     }
 }
