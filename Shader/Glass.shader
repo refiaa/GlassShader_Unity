@@ -6,6 +6,7 @@ Shader "refiaa/glass"
         _BaseTint("Reserved RGB / Effect Blend (A)", Color) = (1, 1, 1, 1)
         _TransmissionColorAtDistance("Transmittance At Reference Distance", Color) = (0.97647, 1.00000, 0.99608, 1)
         _ReferenceDistance("Reference Distance (Meters)", Range(0.001, 0.250)) = 0.010
+        _TransmittanceInfluence("Transmittance Influence", Range(0.000, 1.000)) = 0.350
         _ThicknessScale("Thickness Scale", Range(0.010, 10.000)) = 0.500
         _ThicknessBias("Thickness Bias (Meters)", Range(-0.020, 0.020)) = 0.020
         _MaxThickness("Max Thickness (Meters)", Range(0.001, 2.000)) = 0.200
@@ -139,6 +140,7 @@ Shader "refiaa/glass"
             float4 _RoughnessMap_ST;
             float4 _MetallicMap_ST;
             float _ReferenceDistance;
+            float _TransmittanceInfluence;
             float _ThicknessScale;
             float _ThicknessBias;
             float _MaxThickness;
@@ -488,6 +490,7 @@ Shader "refiaa/glass"
                 absorptionThickness = clamp(absorptionThickness, 0.0, _MaxThickness);
 
                 float3 sigma = GlassSigmaFromReferenceColor(_TransmissionColorAtDistance.rgb, _ReferenceDistance);
+                sigma *= saturate(_TransmittanceInfluence);
                 float3 transmittance = GlassComputeTransmittance(sigma, absorptionThickness);
 
                 float normalizedThickness = absorptionThickness / max(_MaxThickness, 1e-5);
