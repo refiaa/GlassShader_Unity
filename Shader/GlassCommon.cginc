@@ -60,6 +60,28 @@ inline float GlassApplyTransmittanceCurve(float normalizedThickness, float curve
     return shaped * (1.0 + (p - 1.0) * x);
 }
 
+inline float GlassComputeDepthTintBoost(float normalizedThickness, float strength, float curvePower)
+{
+    float x = saturate(normalizedThickness);
+    float s = max(strength, 0.0);
+    float p = max(curvePower, 1e-4);
+    return 1.0 + s * pow(x, p);
+}
+
+inline float2 GlassComputeRefractionOffsetVS(float3 viewDirVS, float3 normalVS, float ior, float refractionScale)
+{
+    float3 v = normalize(viewDirVS);
+    float3 n = normalize(normalVS);
+    float3 incident = -v;
+    float eta = 1.0 / max(ior, 1.0001);
+    float3 refracted = refract(incident, n, eta);
+    float refractedValid = step(1e-5, dot(refracted, refracted));
+
+    float2 fallbackOffset = n.xy * refractionScale;
+    float2 snellOffset = (refracted.xy - incident.xy) * refractionScale;
+    return lerp(fallbackOffset, snellOffset, refractedValid);
+}
+
 inline float GlassOneMinusCosPow5(float cosTheta)
 {
     float oneMinusCos = 1.0 - saturate(cosTheta);

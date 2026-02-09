@@ -17,6 +17,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent ReferenceDistance = new GUIContent("Reference Distance (Meters)");
         public static readonly GUIContent TransmittanceInfluence = new GUIContent("Transmittance Influence");
         public static readonly GUIContent TransmittanceCurvePower = new GUIContent("Transmittance Curve Power");
+        public static readonly GUIContent DepthTintStrength = new GUIContent("Depth Tint Strength");
+        public static readonly GUIContent DepthTintCurve = new GUIContent("Depth Tint Curve");
         public static readonly GUIContent ThicknessScale = new GUIContent("Thickness Scale");
         public static readonly GUIContent ThicknessBias = new GUIContent("Thickness Bias (Meters)");
         public static readonly GUIContent MaxThickness = new GUIContent("Max Thickness (Meters)");
@@ -36,6 +38,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent RefractionStrength = new GUIContent("Refraction Strength");
         public static readonly GUIContent UseChromaticAberration = new GUIContent("Use Chromatic Aberration");
         public static readonly GUIContent ChromaticAberration = new GUIContent("Chromatic Aberration (Pixels)");
+        public static readonly GUIContent DispersionStrength = new GUIContent("Dispersion Strength");
+        public static readonly GUIContent RefractionRoughBlur = new GUIContent("Refraction Rough Blur (Pixels)");
         public static readonly GUIContent RefractionScreenEdgeFade = new GUIContent("Refraction Screen Edge Fade (Pixels)");
 
         public static readonly GUIContent IndexOfRefraction = new GUIContent("Index Of Refraction");
@@ -81,6 +85,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string ReferenceDistance = "_ReferenceDistance";
         public const string TransmittanceInfluence = "_TransmittanceInfluence";
         public const string TransmittanceCurvePower = "_TransmittanceCurvePower";
+        public const string DepthTintStrength = "_DepthTintStrength";
+        public const string DepthTintCurve = "_DepthTintCurve";
         public const string ThicknessScale = "_ThicknessScale";
         public const string ThicknessBias = "_ThicknessBias";
         public const string MaxThickness = "_MaxThickness";
@@ -100,6 +106,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string RefractionStrength = "_RefractionStrength";
         public const string UseChromaticAberration = "_UseChromaticAberration";
         public const string ChromaticAberration = "_ChromaticAberration";
+        public const string DispersionStrength = "_DispersionStrength";
+        public const string RefractionRoughBlur = "_RefractionRoughBlur";
         public const string ScreenEdgeFadePixels = "_ScreenEdgeFadePixels";
 
         public const string Ior = "_IOR";
@@ -166,6 +174,8 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _referenceDistance;
     private MaterialProperty _transmittanceInfluence;
     private MaterialProperty _transmittanceCurvePower;
+    private MaterialProperty _depthTintStrength;
+    private MaterialProperty _depthTintCurve;
     private MaterialProperty _thicknessScale;
     private MaterialProperty _thicknessBias;
     private MaterialProperty _maxThickness;
@@ -185,6 +195,8 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _refractionStrength;
     private MaterialProperty _useChromaticAberration;
     private MaterialProperty _chromaticAberration;
+    private MaterialProperty _dispersionStrength;
+    private MaterialProperty _refractionRoughBlur;
     private MaterialProperty _screenEdgeFadePixels;
 
     private MaterialProperty _ior;
@@ -298,6 +310,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _referenceDistance, Names.ReferenceDistance, properties);
         BindProperty(ref _transmittanceInfluence, Names.TransmittanceInfluence, properties);
         BindProperty(ref _transmittanceCurvePower, Names.TransmittanceCurvePower, properties);
+        BindProperty(ref _depthTintStrength, Names.DepthTintStrength, properties);
+        BindProperty(ref _depthTintCurve, Names.DepthTintCurve, properties);
         BindProperty(ref _thicknessScale, Names.ThicknessScale, properties);
         BindProperty(ref _thicknessBias, Names.ThicknessBias, properties);
         BindProperty(ref _maxThickness, Names.MaxThickness, properties);
@@ -317,6 +331,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _refractionStrength, Names.RefractionStrength, properties);
         BindProperty(ref _useChromaticAberration, Names.UseChromaticAberration, properties);
         BindProperty(ref _chromaticAberration, Names.ChromaticAberration, properties);
+        BindProperty(ref _dispersionStrength, Names.DispersionStrength, properties);
+        BindProperty(ref _refractionRoughBlur, Names.RefractionRoughBlur, properties);
         BindProperty(ref _screenEdgeFadePixels, Names.ScreenEdgeFadePixels, properties);
 
         BindProperty(ref _ior, Names.Ior, properties);
@@ -402,6 +418,8 @@ public sealed class GlassShaderGUI : ShaderGUI
         DrawProperty(materialEditor, _referenceDistance, Styles.ReferenceDistance);
         DrawProperty(materialEditor, _transmittanceInfluence, Styles.TransmittanceInfluence);
         DrawProperty(materialEditor, _transmittanceCurvePower, Styles.TransmittanceCurvePower);
+        DrawProperty(materialEditor, _depthTintStrength, Styles.DepthTintStrength);
+        DrawProperty(materialEditor, _depthTintCurve, Styles.DepthTintCurve);
         DrawProperty(materialEditor, _thicknessScale, Styles.ThicknessScale);
         DrawProperty(materialEditor, _thicknessBias, Styles.ThicknessBias);
         DrawProperty(materialEditor, _maxThickness, Styles.MaxThickness);
@@ -431,8 +449,10 @@ public sealed class GlassShaderGUI : ShaderGUI
         using (new EditorGUI.DisabledScope(!GetToggleValue(_useChromaticAberration)))
         {
             DrawProperty(materialEditor, _chromaticAberration, Styles.ChromaticAberration);
+            DrawProperty(materialEditor, _dispersionStrength, Styles.DispersionStrength);
         }
 
+        DrawProperty(materialEditor, _refractionRoughBlur, Styles.RefractionRoughBlur);
         DrawProperty(materialEditor, _screenEdgeFadePixels, Styles.RefractionScreenEdgeFade);
         DrawProperty(materialEditor, _fresnelBoost, Styles.FresnelBoost);
         DrawProperty(materialEditor, _transmissionAtGrazing, Styles.TransmissionAtGrazing);

@@ -8,6 +8,8 @@ Shader "refiaa/glass"
         _ReferenceDistance("Reference Distance (Meters)", Range(0.001, 0.250)) = 0.010
         _TransmittanceInfluence("Transmittance Influence", Range(0.000, 1.000)) = 0.350
         _TransmittanceCurvePower("Transmittance Curve Power", Range(0.250, 4.000)) = 1.000
+        _DepthTintStrength("Depth Tint Strength", Range(0.000, 3.000)) = 0.450
+        _DepthTintCurve("Depth Tint Curve", Range(0.250, 4.000)) = 1.250
         _ThicknessScale("Thickness Scale", Range(0.010, 10.000)) = 0.500
         _ThicknessBias("Thickness Bias (Meters)", Range(-0.020, 0.020)) = 0.020
         _MaxThickness("Max Thickness (Meters)", Range(0.001, 2.000)) = 0.200
@@ -28,6 +30,8 @@ Shader "refiaa/glass"
         _RefractionStrength("Refraction Strength", Range(0.000, 0.200)) = 0.010
         [Toggle] _UseChromaticAberration("Use Chromatic Aberration", Float) = 1
         _ChromaticAberration("Chromatic Aberration (Pixels)", Range(0.000, 3.000)) = 3.000
+        _DispersionStrength("Dispersion Strength", Range(0.000, 0.200)) = 0.030
+        _RefractionRoughBlur("Refraction Rough Blur (Pixels)", Range(0.000, 8.000)) = 0.000
         _ScreenEdgeFadePixels("Refraction Screen Edge Fade (Pixels)", Range(0.0, 32.0)) = 32.000
 
         [Header(Reflection)]
@@ -155,6 +159,8 @@ Shader "refiaa/glass"
             float _ReferenceDistance;
             float _TransmittanceInfluence;
             float _TransmittanceCurvePower;
+            float _DepthTintStrength;
+            float _DepthTintCurve;
             float _ThicknessScale;
             float _ThicknessBias;
             float _MaxThickness;
@@ -173,6 +179,8 @@ Shader "refiaa/glass"
             float _RefractionStrength;
             float _UseChromaticAberration;
             float _ChromaticAberration;
+            float _DispersionStrength;
+            float _RefractionRoughBlur;
             float _ScreenEdgeFadePixels;
             float _IOR;
             float _EnvReflectionStrength;
@@ -364,6 +372,38 @@ Shader "refiaa/glass"
                 return 0.0.xxx;
             }
 
+            float3 SampleSceneColorOffset(float2 baseUV, float4 baseGrabPos, float2 uvOffset)
+            {
+                float2 uv = ClampSceneUV(baseUV + uvOffset);
+                float4 grabPos = baseGrabPos;
+                grabPos.xy += uvOffset * baseGrabPos.w;
+                return SampleSceneColor(uv, grabPos);
+            }
+
+            float3 SampleSceneColorRoughBlur(float2 baseUV, float4 baseGrabPos, float roughness01, float thickness01)
+            {
+                float blurPixels = max(_RefractionRoughBlur, 0.0) * saturate(roughness01) * (0.2 + 0.8 * saturate(thickness01));
+                if (blurPixels <= 0.01)
+                {
+                    return SampleSceneColor(baseUV, baseGrabPos);
+                }
+
+                float2 texel = GetScreenTexelSize();
+                float2 offset = texel * blurPixels;
+
+                float3 color = 0.0.xxx;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(0.0, 0.0)) * 0.36;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2( offset.x, 0.0)) * 0.11;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(-offset.x, 0.0)) * 0.11;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(0.0,  offset.y)) * 0.11;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(0.0, -offset.y)) * 0.11;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2( offset.x,  offset.y)) * 0.05;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2( offset.x, -offset.y)) * 0.05;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(-offset.x,  offset.y)) * 0.05;
+                color += SampleSceneColorOffset(baseUV, baseGrabPos, float2(-offset.x, -offset.y)) * 0.05;
+                return color;
+            }
+
             float GlassApplyMapStrength(float baseValue, float mapValue, float strength01)
             {
                 return saturate(lerp(baseValue, saturate(mapValue), saturate(strength01)));
@@ -417,25 +457,41 @@ Shader "refiaa/glass"
                 return normalWS;
             }
 
-            float3 SampleChromaticSceneColor(float2 refractedUV, float4 refractedGrabPos, float2 refractionOffset, float refractionScale)
+            float3 SampleChromaticSceneColor(
+                float2 refractedUV,
+                float4 refractedGrabPos,
+                float3 viewDirVS,
+                float3 normalVS,
+                float ior,
+                float refractionScale,
+                float2 centerRefractionOffset,
+                float3 baseSceneColor)
             {
-                float2 pixelSize = GetScreenTexelSize();
-                float2 chromaDir = normalize(refractionOffset + float2(1e-6, 0.0));
-                float chromaFade = saturate(refractionScale / max(_RefractionStrength, 1e-5));
-                float2 chromaOffset = chromaDir * (_ChromaticAberration * pixelSize * chromaFade);
+                float dispersionEta = max(_DispersionStrength, 0.0);
+                float legacyPixels = max(_ChromaticAberration, 0.0);
+                dispersionEta += legacyPixels * 0.0025;
 
-                float2 uvR = ClampSceneUV(refractedUV + chromaOffset);
-                float2 uvB = ClampSceneUV(refractedUV - chromaOffset);
-                float4 grabPosR = refractedGrabPos;
-                float4 grabPosB = refractedGrabPos;
-                grabPosR.xy += chromaOffset * grabPosR.w;
-                grabPosB.xy -= chromaOffset * grabPosB.w;
+                float etaR = max(1.0001, ior - dispersionEta);
+                float etaG = max(1.0001, ior);
+                float etaB = max(1.0001, ior + dispersionEta);
+
+                float2 offsetR = GlassComputeRefractionOffsetVS(viewDirVS, normalVS, etaR, refractionScale) - centerRefractionOffset;
+                float2 offsetG = GlassComputeRefractionOffsetVS(viewDirVS, normalVS, etaG, refractionScale) - centerRefractionOffset;
+                float2 offsetB = GlassComputeRefractionOffsetVS(viewDirVS, normalVS, etaB, refractionScale) - centerRefractionOffset;
+
+                float2 pixelSize = GetScreenTexelSize();
+                float2 legacyDir = normalize(centerRefractionOffset + float2(1e-6, 0.0));
+                float2 legacyOffset = legacyDir * (legacyPixels * pixelSize);
+                offsetR += legacyOffset;
+                offsetB -= legacyOffset;
 
                 float3 sceneColor;
-                sceneColor.r = SampleSceneColor(uvR, grabPosR).r;
-                sceneColor.g = SampleSceneColor(refractedUV, refractedGrabPos).g;
-                sceneColor.b = SampleSceneColor(uvB, grabPosB).b;
-                return sceneColor;
+                sceneColor.r = SampleSceneColorOffset(refractedUV, refractedGrabPos, offsetR).r;
+                sceneColor.g = SampleSceneColorOffset(refractedUV, refractedGrabPos, offsetG).g;
+                sceneColor.b = SampleSceneColorOffset(refractedUV, refractedGrabPos, offsetB).b;
+
+                float chromaMix = saturate(dispersionEta * 10.0);
+                return lerp(baseSceneColor, sceneColor, chromaMix);
             }
 
             float3 SampleEnvironmentReflections(float3 reflectionDirWS, float perceptualRoughness)
@@ -530,7 +586,8 @@ Shader "refiaa/glass"
                 float maxThicknessSafe = max(_MaxThickness, 1e-5);
                 float normalizedAbsorptionRaw = GlassNormalizeThickness(absorptionThicknessRaw, maxThicknessSafe);
                 float thicknessCurve01 = GlassApplyTransmittanceCurve(normalizedAbsorptionRaw, _TransmittanceCurvePower);
-                float curvedAbsorptionThickness = thicknessCurve01 * maxThicknessSafe;
+                float depthTintBoost = GlassComputeDepthTintBoost(normalizedAbsorptionRaw, _DepthTintStrength, _DepthTintCurve);
+                float curvedAbsorptionThickness = thicknessCurve01 * maxThicknessSafe * depthTintBoost;
                 float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
                 float normalizedThickness = saturate(GlassNormalizeThickness(absorptionThickness, maxThicknessSafe));
@@ -545,22 +602,27 @@ Shader "refiaa/glass"
                     refractionScale *= edgeFade;
                 }
 
-                float2 refractionOffset = normalVS.xy * refractionScale;
+                float eta = max(_IOR, 1.0001);
+                float3 viewDirVS = normalize(mul((float3x3)UNITY_MATRIX_V, viewDirWS));
+                float2 refractionOffset = GlassComputeRefractionOffsetVS(viewDirVS, normalVS, eta, refractionScale);
                 float2 refractedUV = ClampSceneUV(screenUV + refractionOffset);
                 float4 refractedGrabPos = input.grabPos;
                 refractedGrabPos.xy += refractionOffset * refractedGrabPos.w;
 
-                float3 sceneColor;
+                float3 sceneColor = SampleSceneColorRoughBlur(refractedUV, refractedGrabPos, perceptualRoughness, normalizedThickness);
                 if (_UseChromaticAberration > 0.5)
                 {
-                    sceneColor = SampleChromaticSceneColor(refractedUV, refractedGrabPos, refractionOffset, refractionScale);
-                }
-                else
-                {
-                    sceneColor = SampleSceneColor(refractedUV, refractedGrabPos);
+                    sceneColor = SampleChromaticSceneColor(
+                        refractedUV,
+                        refractedGrabPos,
+                        viewDirVS,
+                        normalVS,
+                        eta,
+                        refractionScale,
+                        refractionOffset,
+                        sceneColor);
                 }
 
-                float eta = max(_IOR, 1.0001);
                 float f0Dielectric = pow((eta - 1.0) / (eta + 1.0), 2.0);
                 float3 dielectricSpecular = saturate(_ReflectionTint.rgb) * f0Dielectric;
                 float3 specularColor = lerp(dielectricSpecular, saturate(_ReflectionTint.rgb), metallic);
