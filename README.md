@@ -1,7 +1,8 @@
 # Realistic Volumetric Glass Shader (Unity BRP)
 
+
 <div align="center">
-  <video src="./Media/Video.mp4" width="100%" controls autoplay loop muted></video>
+  <img src="./Media/image2.png" width="100%" alt="Refraction Detail" />
   <br/>
   <em>Real-time Volumetric Absorption & Refraction Demo</em>
 </div>
@@ -28,12 +29,12 @@ The shader has been verified to work in **Unity 2022.3.22f1, 2022.3.22f2** and *
   <table>
     <tr>
       <td align="center">
-        <img src="./Media/image1.png" width="100%" alt="Thickness Visualization" />
+        <video src="https://github.com/user-attachments/assets/d4fabdca-d540-4030-88b0-dbd326be6298" width="100%" controls autoplay loop muted></video>
       </td>
     </tr>
     <tr>
       <td align="center">
-        <img src="./Media/image2.png" width="100%" alt="Refraction Detail" />
+        <img src="./Media/image1.png" width="100%" alt="Thickness Visualization" />
       </td>
     </tr>
   </table>
