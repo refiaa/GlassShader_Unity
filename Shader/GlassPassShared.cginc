@@ -94,6 +94,8 @@ inline float3 SampleRefractionBlurredSceneColor(float2 baseUV, float4 baseGrabPo
 {
     float3 accum = 0.0.xxx;
     float weightSum = 0.0;
+    float kernelRadius = (float)GLASS_REFRACTION_BLUR_RADIUS + 0.5;
+    float kernelRadiusSq = kernelRadius * kernelRadius;
 
     [unroll]
     for (int y = -GLASS_REFRACTION_BLUR_RADIUS; y <= GLASS_REFRACTION_BLUR_RADIUS; y++)
@@ -102,10 +104,14 @@ inline float3 SampleRefractionBlurredSceneColor(float2 baseUV, float4 baseGrabPo
         for (int x = -GLASS_REFRACTION_BLUR_RADIUS; x <= GLASS_REFRACTION_BLUR_RADIUS; x++)
         {
             float2 sampleIndex = float2((float)x, (float)y);
-            float weight = GlassGaussianWeight2D(sampleIndex, kernelSigma);
-            float2 uvOffset = float2(blurStepUV.x * sampleIndex.x, blurStepUV.y * sampleIndex.y);
-            accum += SampleSceneColorOffset(baseUV, baseGrabPos, uvOffset) * weight;
-            weightSum += weight;
+            float radiusSq = dot(sampleIndex, sampleIndex);
+            if (radiusSq <= kernelRadiusSq)
+            {
+                float weight = GlassGaussianWeight2D(sampleIndex, kernelSigma) * GlassCircularKernelWeight(sampleIndex);
+                float2 uvOffset = float2(blurStepUV.x * sampleIndex.x, blurStepUV.y * sampleIndex.y);
+                accum += SampleSceneColorOffset(baseUV, baseGrabPos, uvOffset) * weight;
+                weightSum += weight;
+            }
         }
     }
 

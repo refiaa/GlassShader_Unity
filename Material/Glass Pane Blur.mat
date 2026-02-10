@@ -627,12 +627,12 @@ Material:
     - _ReflectionCubeEnableLighting: 1
     - _ReflectionCubeOverride: 0
     - _ReflectionNormalStrength: 1
-    - _RefractionBlurKernelSigma: 1
+    - _RefractionBlurKernelSigma: 2
     - _RefractionBlurMaxPixels: 15
-    - _RefractionBlurRoughnessInfluence: 0.1
+    - _RefractionBlurRoughnessInfluence: 0
     - _RefractionBlurScale: 0.01
     - _RefractionBlurStrength: 1.5
-    - _RefractionBlurThicknessInfluence: 0.1
+    - _RefractionBlurThicknessInfluence: 0
     - _RefractionRoughBlur: 0
     - _RefractionStrength: 0.002
     - _RimApplyTransparency: 1

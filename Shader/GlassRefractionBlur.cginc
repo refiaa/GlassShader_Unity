@@ -2,7 +2,7 @@
 #define GLASS_REFRACTION_BLUR_INCLUDED
 
 #ifndef GLASS_REFRACTION_BLUR_RADIUS
-#define GLASS_REFRACTION_BLUR_RADIUS 2
+#define GLASS_REFRACTION_BLUR_RADIUS 3
 #endif
 
 inline float GlassComputePerceptualRoughness(float smoothness, float roughnessMapSample, float roughnessMapStrength)
@@ -23,6 +23,13 @@ inline float GlassGaussianWeight2D(float2 sampleIndex, float sigma)
     float sigmaSafe = max(sigma, 0.35);
     float invTwoSigma2 = 0.5 / (sigmaSafe * sigmaSafe);
     return exp(-dot(sampleIndex, sampleIndex) * invTwoSigma2);
+}
+
+inline float GlassCircularKernelWeight(float2 sampleIndex)
+{
+    float radius = (float)GLASS_REFRACTION_BLUR_RADIUS + 0.5;
+    float dist = length(sampleIndex);
+    return saturate((radius - dist) / max(radius, 1e-5));
 }
 
 inline float GlassComputeRefractionBlurStepUV(float blurDriver, float frontDepth, float blurScale, float aspect, float projectionM11)
