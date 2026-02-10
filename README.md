@@ -6,6 +6,9 @@
   <em>Real-time Volumetric Absorption & Refraction Demo</em>
 </div>
 
+[![GitHub release](https://img.shields.io/github/release/refiaa/GlassShader_Unity.svg?color=Green)](https://github.com/refiaa/GlassShader_Unity/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/refiaa/GlassShader_Unity/total?color=6451f1)](https://github.com/refiaa/GlassShader_Unity/releases/latest)
+
 ## Introduction
 
 A physically-based glass shader designed for the **Unity Built-in Render Pipeline (BRP)** and **VRChat** environments.
