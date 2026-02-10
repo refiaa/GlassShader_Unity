@@ -90,171 +90,88 @@ inline float3 SampleSceneColorOffset(float2 baseUV, float4 baseGrabPos, float2 u
     return SampleSceneColor(uv, grabPos);
 }
 
-inline float GlassComputeBlurTapWeight(float radiusSq, float distance, float invTwoSigma2, float kernelRadius, float invKernelRadius)
+inline float GlassComputeBlurTapWeight(float normalizedRadius, float kernelSigma)
 {
-    float gaussian = exp(-radiusSq * invTwoSigma2);
-    float circular = saturate((kernelRadius - distance) * invKernelRadius);
-    return gaussian * circular;
+    float clampedRadius = saturate(normalizedRadius);
+    float gaussian = GlassGaussianWeight(clampedRadius * (float)GLASS_REFRACTION_BLUR_RADIUS, kernelSigma);
+    float centerBias = lerp(1.0, 0.88, clampedRadius);
+    return gaussian * centerBias;
+}
+
+inline float GlassInterleavedGradientNoise(float2 pixelCoord)
+{
+    return frac(52.9829189 * frac(dot(pixelCoord, float2(0.06711056, 0.00583715))));
+}
+
+inline float2 GlassVogelDiskOffset(int sampleIndex, float sampleCount, float phase)
+{
+    const float kGoldenAngle = 2.39996323;
+    float fi = (float)sampleIndex + 0.5;
+    float r = sqrt(fi / max(sampleCount, 1.0));
+    float angle = fi * kGoldenAngle + phase;
+    float sinA;
+    float cosA;
+    sincos(angle, sinA, cosA);
+    return float2(cosA, sinA) * r;
 }
 
 inline void AccumulateRefractionBlurTap(
     float2 baseUV,
     float4 baseGrabPos,
-    float2 blurStepUV,
-    float2 sampleIndex,
+    float2 blurRadiusUV,
+    float2 normalizedOffset,
     float weight,
     inout float3 accum,
     inout float weightSum)
 {
-    float2 uvOffset = blurStepUV * sampleIndex;
+    float2 uvOffset = blurRadiusUV * normalizedOffset;
     accum += SampleSceneColorOffset(baseUV, baseGrabPos, uvOffset) * weight;
     weightSum += weight;
-}
-
-inline float3 SampleRefractionBlurKernel5(
-    float2 baseUV,
-    float4 baseGrabPos,
-    float2 blurStepUV,
-    float w0,
-    float wAxis1)
-{
-    float3 accum = 0.0.xxx;
-    float weightSum = 0.0;
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 0.0), w0, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 1.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -1.0), wAxis1, accum, weightSum);
-
-    return accum / max(weightSum, 1e-5);
-}
-
-inline float3 SampleRefractionBlurKernel13(
-    float2 baseUV,
-    float4 baseGrabPos,
-    float2 blurStepUV,
-    float w0,
-    float wAxis1,
-    float wDiag1,
-    float wAxis2)
-{
-    float3 accum = 0.0.xxx;
-    float weightSum = 0.0;
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 0.0), w0, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 1.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -1.0), wAxis1, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, -1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, -1.0), wDiag1, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, 0.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, 0.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 2.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -2.0), wAxis2, accum, weightSum);
-
-    return accum / max(weightSum, 1e-5);
-}
-
-inline float3 SampleRefractionBlurKernel29(
-    float2 baseUV,
-    float4 baseGrabPos,
-    float2 blurStepUV,
-    float w0,
-    float wAxis1,
-    float wDiag1,
-    float wAxis2,
-    float wAxis3,
-    float wKnight,
-    float wDiag2)
-{
-    float3 accum = 0.0.xxx;
-    float weightSum = 0.0;
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 0.0), w0, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 0.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 1.0), wAxis1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -1.0), wAxis1, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, -1.0), wDiag1, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, -1.0), wDiag1, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, 0.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, 0.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 2.0), wAxis2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -2.0), wAxis2, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(3.0, 0.0), wAxis3, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-3.0, 0.0), wAxis3, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, 3.0), wAxis3, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(0.0, -3.0), wAxis3, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, 2.0), wDiag2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, 2.0), wDiag2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, -2.0), wDiag2, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, -2.0), wDiag2, accum, weightSum);
-
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, 2.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, 2.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(1.0, -2.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-1.0, -2.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, 1.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, 1.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(2.0, -1.0), wKnight, accum, weightSum);
-    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurStepUV, float2(-2.0, -1.0), wKnight, accum, weightSum);
-
-    return accum / max(weightSum, 1e-5);
 }
 
 inline float3 SampleRefractionBlurredSceneColor(
     float2 baseUV,
     float4 baseGrabPos,
-    float2 blurStepUV,
-    float blurStepPixels,
+    float2 blurRadiusUV,
+    float blurRadiusPixels,
     float kernelSigma,
     float highQuality)
 {
-    float sigmaSafe = max(kernelSigma, 0.35);
-    float invTwoSigma2 = 0.5 / (sigmaSafe * sigmaSafe);
-    float kernelRadius = (float)GLASS_REFRACTION_BLUR_RADIUS + 0.5;
-    float invKernelRadius = 1.0 / max(kernelRadius, 1e-5);
-
-    const float kSqrt2 = 1.41421356;
-    const float kSqrt5 = 2.23606798;
-    const float kSqrt8 = 2.82842712;
-
-    float w0 = 1.0;
-    float wAxis1 = GlassComputeBlurTapWeight(1.0, 1.0, invTwoSigma2, kernelRadius, invKernelRadius);
-    float wDiag1 = GlassComputeBlurTapWeight(2.0, kSqrt2, invTwoSigma2, kernelRadius, invKernelRadius);
-    float wAxis2 = GlassComputeBlurTapWeight(4.0, 2.0, invTwoSigma2, kernelRadius, invKernelRadius);
-    float wKnight = GlassComputeBlurTapWeight(5.0, kSqrt5, invTwoSigma2, kernelRadius, invKernelRadius);
-    float wDiag2 = GlassComputeBlurTapWeight(8.0, kSqrt8, invTwoSigma2, kernelRadius, invKernelRadius);
-    float wAxis3 = GlassComputeBlurTapWeight(9.0, 3.0, invTwoSigma2, kernelRadius, invKernelRadius);
-
-    [branch]
-    if (blurStepPixels < 0.55)
+    if (blurRadiusPixels <= 0.35)
     {
-        return SampleRefractionBlurKernel5(baseUV, baseGrabPos, blurStepUV, w0, wAxis1);
+        return SampleSceneColor(baseUV, baseGrabPos);
     }
 
+    int tapCount = 6;
     [branch]
-    if (highQuality > 0.5 && blurStepPixels >= 1.25)
+    if (blurRadiusPixels >= 0.75) tapCount = 10;
+    [branch]
+    if (highQuality > 0.5 && blurRadiusPixels >= 1.20) tapCount = 14;
+    float tapCountF = (float)tapCount;
+
+    float wCenter = GlassComputeBlurTapWeight(0.0, kernelSigma);
+    float3 accum = 0.0.xxx;
+    float weightSum = 0.0;
+
+    // Deterministic phase jitter suppresses visible rings/stripes without temporal flicker.
+    float2 kernelTileCoord = floor(baseUV * _ScreenParams.xy * 0.5 + 0.5);
+    float kernelNoise = GlassInterleavedGradientNoise(kernelTileCoord);
+    float kernelPhase = kernelNoise * 6.28318531;
+
+    // Center
+    AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurRadiusUV, float2(0.0, 0.0), wCenter, accum, weightSum);
+
+    const int kMaxVogelTaps = 14;
+    [loop]
+    for (int i = 0; i < kMaxVogelTaps; i++)
     {
-        return SampleRefractionBlurKernel29(baseUV, baseGrabPos, blurStepUV, w0, wAxis1, wDiag1, wAxis2, wAxis3, wKnight, wDiag2);
+        if (i >= tapCount) break;
+        float2 sampleOffset = GlassVogelDiskOffset(i, tapCountF, kernelPhase);
+        float weight = GlassComputeBlurTapWeight(length(sampleOffset), kernelSigma);
+        AccumulateRefractionBlurTap(baseUV, baseGrabPos, blurRadiusUV, sampleOffset, weight, accum, weightSum);
     }
 
-    return SampleRefractionBlurKernel13(baseUV, baseGrabPos, blurStepUV, w0, wAxis1, wDiag1, wAxis2);
+    return accum / max(weightSum, 1e-5);
 }
 
 inline float GlassComputeEdgeDataValidity(float3 barycentric)

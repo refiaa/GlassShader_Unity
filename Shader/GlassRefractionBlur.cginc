@@ -46,7 +46,7 @@ inline float GlassComputeRefractionBlurDriver(float perceptualRoughness, float n
     return roughnessDriver * thicknessDriver;
 }
 
-inline float GlassClampBlurStepUVByPixelRadius(float stepUV, float maxPixelRadius, float screenSize)
+inline float GlassClampBlurRadiusUVByPixelRadius(float radiusUV, float maxPixelRadius, float screenSize)
 {
     float maxPixels = max(maxPixelRadius, 0.0);
     if (maxPixels <= 1e-4)
@@ -54,13 +54,18 @@ inline float GlassClampBlurStepUVByPixelRadius(float stepUV, float maxPixelRadiu
         return 0.0;
     }
 
-    float stepPixels = abs(stepUV) * max(screenSize, 1.0);
-    if (stepPixels <= maxPixels || stepPixels <= 1e-6)
+    float radiusPixels = abs(radiusUV) * max(screenSize, 1.0);
+    if (radiusPixels <= maxPixels || radiusPixels <= 1e-6)
     {
-        return stepUV;
+        return radiusUV;
     }
 
-    return stepUV * (maxPixels / stepPixels);
+    return radiusUV * (maxPixels / radiusPixels);
+}
+
+inline float GlassClampBlurStepUVByPixelRadius(float stepUV, float maxPixelRadius, float screenSize)
+{
+    return GlassClampBlurRadiusUVByPixelRadius(stepUV, maxPixelRadius, screenSize);
 }
 
 #endif

@@ -372,19 +372,22 @@ Shader "refiaa/glass"
                             UNITY_MATRIX_P._m11);
 
                         blurStep *= max(_RefractionBlurStrength, 0.0);
-                        blurStep = GlassClampBlurStepUVByPixelRadius(blurStep, _RefractionBlurMaxPixels, minScreenDim);
+                        float blurRadius = GlassClampBlurRadiusUVByPixelRadius(
+                            blurStep * (float)GLASS_REFRACTION_BLUR_RADIUS,
+                            _RefractionBlurMaxPixels,
+                            minScreenDim);
 
-                        if (abs(blurStep) > 1e-5)
+                        if (abs(blurRadius) > 1e-5)
                         {
-                            float blurStepPixels = abs(blurStep) * minScreenDim;
-                            if (blurStepPixels > 0.20)
+                            float blurRadiusPixels = abs(blurRadius) * minScreenDim;
+                            if (blurRadiusPixels > 0.35)
                             {
-                                float2 blurStepUV = blurStepPixels / max(_ScreenParams.xy, float2(1.0, 1.0));
+                                float2 blurRadiusUV = blurRadiusPixels / max(_ScreenParams.xy, float2(1.0, 1.0));
                                 float3 blurredSceneColor = SampleRefractionBlurredSceneColor(
                                     refractedUV,
                                     refractedGrabPos,
-                                    blurStepUV,
-                                    blurStepPixels,
+                                    blurRadiusUV,
+                                    blurRadiusPixels,
                                     _RefractionBlurKernelSigma,
                                     1.0);
                                 sceneColor = lerp(sceneColorBase, blurredSceneColor, blurBlend);
@@ -671,19 +674,22 @@ Shader "refiaa/glass"
                             UNITY_MATRIX_P._m11);
 
                         blurStep *= max(_RefractionBlurStrength, 0.0);
-                        blurStep = GlassClampBlurStepUVByPixelRadius(blurStep, _RefractionBlurMaxPixels, minScreenDim);
+                        float blurRadius = GlassClampBlurRadiusUVByPixelRadius(
+                            blurStep * (float)GLASS_REFRACTION_BLUR_RADIUS,
+                            _RefractionBlurMaxPixels,
+                            minScreenDim);
 
-                        if (abs(blurStep) > 1e-5)
+                        if (abs(blurRadius) > 1e-5)
                         {
-                            float blurStepPixels = abs(blurStep) * minScreenDim;
-                            if (blurStepPixels > 0.20)
+                            float blurRadiusPixels = abs(blurRadius) * minScreenDim;
+                            if (blurRadiusPixels > 0.35)
                             {
-                                float2 blurStepUV = blurStepPixels / max(_ScreenParams.xy, float2(1.0, 1.0));
+                                float2 blurRadiusUV = blurRadiusPixels / max(_ScreenParams.xy, float2(1.0, 1.0));
                                 float3 blurredSceneColor = SampleRefractionBlurredSceneColor(
                                     refractedUV,
                                     refractedGrabPos,
-                                    blurStepUV,
-                                    blurStepPixels,
+                                    blurRadiusUV,
+                                    blurRadiusPixels,
                                     _RefractionBlurKernelSigma,
                                     0.0);
                                 sceneColor = lerp(sceneColorBase, blurredSceneColor, blurBlend);
