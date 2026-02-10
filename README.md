@@ -28,12 +28,12 @@ The shader has been verified to work in **Unity 2022.3.22f1, 2022.3.22f2** and *
   <table>
     <tr>
       <td align="center">
-        <img src="./media/image1.png" width="100%" alt="Thickness Visualization" />
+        <img src="./Media/image1.png" width="100%" alt="Thickness Visualization" />
       </td>
     </tr>
     <tr>
       <td align="center">
-        <img src="./media/image2.png" width="100%" alt="Refraction Detail" />
+        <img src="./Media/image2.png" width="100%" alt="Refraction Detail" />
       </td>
     </tr>
   </table>
