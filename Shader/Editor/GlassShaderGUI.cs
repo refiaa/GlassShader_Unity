@@ -6,6 +6,7 @@ public sealed class GlassShaderGUI : ShaderGUI
     private static class Styles
     {
         public static readonly GUIContent Refraction = new GUIContent("Refraction");
+        public static readonly GUIContent RefractionBlur = new GUIContent("Refraction Blur");
         public static readonly GUIContent TexturesAndShading = new GUIContent("Textures And Shading");
         public static readonly GUIContent GlassBodyThicknessColor = new GUIContent("Glass Body (Thickness & Color)");
         public static readonly GUIContent FallbackAndInputs = new GUIContent("Fallback And Inputs");
@@ -41,6 +42,13 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent UseChromaticAberration = new GUIContent("Use Chromatic Aberration");
         public static readonly GUIContent ChromaticAberration = new GUIContent("Chromatic Aberration (Pixels)");
         public static readonly GUIContent RefractionScreenEdgeFade = new GUIContent("Refraction Screen Edge Fade (Pixels)");
+        public static readonly GUIContent UseRefractionBlur = new GUIContent("Use Refraction Blur");
+        public static readonly GUIContent RefractionBlurStrength = new GUIContent("Blur Strength");
+        public static readonly GUIContent RefractionBlurMaxPixels = new GUIContent("Max Blur Radius (Pixels)");
+        public static readonly GUIContent RefractionBlurRoughnessInfluence = new GUIContent("Roughness Influence");
+        public static readonly GUIContent RefractionBlurThicknessInfluence = new GUIContent("Thickness Influence");
+        public static readonly GUIContent RefractionBlurScale = new GUIContent("Physical Blur Scale");
+        public static readonly GUIContent RefractionBlurKernelSigma = new GUIContent("Kernel Softness");
 
         public static readonly GUIContent IndexOfRefraction = new GUIContent("Index Of Refraction");
         public static readonly GUIContent ReflectionTint = new GUIContent("Reflection Tint");
@@ -110,6 +118,13 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string UseChromaticAberration = "_UseChromaticAberration";
         public const string ChromaticAberration = "_ChromaticAberration";
         public const string ScreenEdgeFadePixels = "_ScreenEdgeFadePixels";
+        public const string UseRefractionBlur = "_UseRefractionBlur";
+        public const string RefractionBlurStrength = "_RefractionBlurStrength";
+        public const string RefractionBlurMaxPixels = "_RefractionBlurMaxPixels";
+        public const string RefractionBlurRoughnessInfluence = "_RefractionBlurRoughnessInfluence";
+        public const string RefractionBlurThicknessInfluence = "_RefractionBlurThicknessInfluence";
+        public const string RefractionBlurScale = "_RefractionBlurScale";
+        public const string RefractionBlurKernelSigma = "_RefractionBlurKernelSigma";
 
         public const string Ior = "_IOR";
         public const string ReflectionTint = "_ReflectionTint";
@@ -162,6 +177,7 @@ public sealed class GlassShaderGUI : ShaderGUI
     };
 
     private static bool _showRefraction = true;
+    private static bool _showRefractionBlur = true;
     private static bool _showTexturesAndShading = true;
     private static bool _showGlassBodyThicknessColor = true;
     private static bool _showFallbackAndInputs;
@@ -199,6 +215,13 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _useChromaticAberration;
     private MaterialProperty _chromaticAberration;
     private MaterialProperty _screenEdgeFadePixels;
+    private MaterialProperty _useRefractionBlur;
+    private MaterialProperty _refractionBlurStrength;
+    private MaterialProperty _refractionBlurMaxPixels;
+    private MaterialProperty _refractionBlurRoughnessInfluence;
+    private MaterialProperty _refractionBlurThicknessInfluence;
+    private MaterialProperty _refractionBlurScale;
+    private MaterialProperty _refractionBlurKernelSigma;
 
     private MaterialProperty _ior;
     private MaterialProperty _reflectionTint;
@@ -260,6 +283,14 @@ public sealed class GlassShaderGUI : ShaderGUI
         {
             BeginSectionBody();
             DrawRefraction(materialEditor);
+            EndSectionBody();
+        }
+
+        _showRefractionBlur = DrawSectionHeader(Styles.RefractionBlur, _showRefractionBlur);
+        if (_showRefractionBlur)
+        {
+            BeginSectionBody();
+            DrawRefractionBlur(materialEditor);
             EndSectionBody();
         }
 
@@ -328,6 +359,13 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _useChromaticAberration, Names.UseChromaticAberration, properties);
         BindProperty(ref _chromaticAberration, Names.ChromaticAberration, properties);
         BindProperty(ref _screenEdgeFadePixels, Names.ScreenEdgeFadePixels, properties);
+        BindProperty(ref _useRefractionBlur, Names.UseRefractionBlur, properties);
+        BindProperty(ref _refractionBlurStrength, Names.RefractionBlurStrength, properties);
+        BindProperty(ref _refractionBlurMaxPixels, Names.RefractionBlurMaxPixels, properties);
+        BindProperty(ref _refractionBlurRoughnessInfluence, Names.RefractionBlurRoughnessInfluence, properties);
+        BindProperty(ref _refractionBlurThicknessInfluence, Names.RefractionBlurThicknessInfluence, properties);
+        BindProperty(ref _refractionBlurScale, Names.RefractionBlurScale, properties);
+        BindProperty(ref _refractionBlurKernelSigma, Names.RefractionBlurKernelSigma, properties);
 
         BindProperty(ref _ior, Names.Ior, properties);
         BindProperty(ref _reflectionTint, Names.ReflectionTint, properties);
@@ -419,6 +457,21 @@ public sealed class GlassShaderGUI : ShaderGUI
         }
 
         DrawProperty(materialEditor, _screenEdgeFadePixels, Styles.RefractionScreenEdgeFade);
+    }
+
+    private void DrawRefractionBlur(MaterialEditor materialEditor)
+    {
+        DrawToggle(_useRefractionBlur, Styles.UseRefractionBlur);
+
+        using (new EditorGUI.DisabledScope(!GetToggleValue(_useRefractionBlur)))
+        {
+            DrawProperty(materialEditor, _refractionBlurStrength, Styles.RefractionBlurStrength);
+            DrawProperty(materialEditor, _refractionBlurMaxPixels, Styles.RefractionBlurMaxPixels);
+            DrawProperty(materialEditor, _refractionBlurRoughnessInfluence, Styles.RefractionBlurRoughnessInfluence);
+            DrawProperty(materialEditor, _refractionBlurThicknessInfluence, Styles.RefractionBlurThicknessInfluence);
+            DrawProperty(materialEditor, _refractionBlurScale, Styles.RefractionBlurScale);
+            DrawProperty(materialEditor, _refractionBlurKernelSigma, Styles.RefractionBlurKernelSigma);
+        }
     }
 
     private void DrawTexturesAndShading(MaterialEditor materialEditor)
@@ -572,6 +625,24 @@ public sealed class GlassShaderGUI : ShaderGUI
         if (sceneColorEnabled && material.GetTexture(Names.SceneColorTex) == null && !grabFallbackEnabled)
         {
             EditorGUILayout.HelpBox("Scene Color Texture is enabled but missing, and GrabPass fallback is disabled.", MessageType.Warning);
+        }
+
+        if (GetToggleValue(_useRefractionBlur) && !sceneColorEnabled && !grabFallbackEnabled)
+        {
+            EditorGUILayout.HelpBox("Refraction Blur is enabled, but both Scene Color Texture and GrabPass fallback are disabled.", MessageType.Warning);
+        }
+
+        if (GetToggleValue(_useRefractionBlur))
+        {
+            float smoothness = _smoothness != null ? _smoothness.floatValue : 1.0f;
+            float roughnessInfluence = _refractionBlurRoughnessInfluence != null ? _refractionBlurRoughnessInfluence.floatValue : 1.0f;
+            float roughnessMapStrength = _roughnessMapStrength != null ? _roughnessMapStrength.floatValue : 0.0f;
+            bool roughnessMapAssigned = _roughnessMap != null && material.GetTexture(Names.RoughnessMap) != null;
+
+            if (roughnessInfluence >= 0.8f && smoothness >= 0.9f && (!roughnessMapAssigned || roughnessMapStrength <= 0.05f))
+            {
+                EditorGUILayout.HelpBox("Blur may look inactive with very high smoothness and high roughness influence. Lower Smoothness or Roughness Influence.", MessageType.Info);
+            }
         }
 
         if (_ior != null && _ior.floatValue <= 1.01f)
