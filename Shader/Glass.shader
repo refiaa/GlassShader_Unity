@@ -28,6 +28,8 @@ Shader "refiaa/glass"
 
         [Header(Refraction)]
         _RefractionStrength("Refraction Strength", Range(0.000, 0.200)) = 0.010
+        _DistortionFace("Distortion (Face)", Range(0.000, 1.000)) = 0.000
+        _DistortionEdge("Distortion (Edge)", Range(0.000, 1.000)) = 0.000
         [Toggle] _UseChromaticAberration("Use Chromatic Aberration", Float) = 1
         _ChromaticAberration("Chromatic Aberration (Pixels)", Range(0.000, 3.000)) = 3.000
         _ScreenEdgeFadePixels("Refraction Screen Edge Fade (Pixels)", Range(0.0, 32.0)) = 32.000
@@ -175,6 +177,8 @@ Shader "refiaa/glass"
             float _NearFadeDistance;
             float _DepthEdgeFixPixels;
             float _RefractionStrength;
+            float _DistortionFace;
+            float _DistortionEdge;
             float _UseChromaticAberration;
             float _ChromaticAberration;
             float _ScreenEdgeFadePixels;
@@ -421,11 +425,11 @@ Shader "refiaa/glass"
                 return normalWS;
             }
 
-            float3 SampleChromaticSceneColor(float2 refractedUV, float4 refractedGrabPos, float2 refractionOffset, float refractionScale)
+            float3 SampleChromaticSceneColor(float2 refractedUV, float4 refractedGrabPos, float2 refractionOffset, float chromaScale)
             {
                 float2 pixelSize = GetScreenTexelSize();
                 float2 chromaDir = normalize(refractionOffset + float2(1e-6, 0.0));
-                float chromaFade = saturate(refractionScale / max(_RefractionStrength, 1e-5));
+                float chromaFade = saturate(chromaScale / max(_RefractionStrength, 1e-5));
                 float2 chromaOffset = chromaDir * (_ChromaticAberration * pixelSize * chromaFade);
 
                 float2 uvR = ClampSceneUV(refractedUV + chromaOffset);
@@ -459,7 +463,17 @@ Shader "refiaa/glass"
                 return envReflection;
             }
 
-            float GlassComputeMeshEdgeMask(float3 barycentric, float3 edgeKeep)
+            float GlassComputeEdgeDataValidity(float3 barycentric)
+            {
+                float barySum = barycentric.x + barycentric.y + barycentric.z;
+                float baryMin = min(barycentric.x, min(barycentric.y, barycentric.z));
+                float baryMax = max(barycentric.x, max(barycentric.y, barycentric.z));
+                float edgeDataValid = 1.0 - step(0.01, abs(barySum - 1.0));
+                edgeDataValid *= step(-0.001, baryMin) * step(baryMax, 1.001);
+                return edgeDataValid;
+            }
+
+            float GlassComputeMeshEdgeRaw(float3 barycentric, float3 edgeKeep)
             {
                 float widthPx = max(_MeshEdgeWidth, 0.0);
                 float softnessPx = max(_MeshEdgeSoftness, 0.001);
@@ -468,9 +482,58 @@ Shader "refiaa/glass"
                 float3 edgeHi = edgeLo + fw * softnessPx;
                 float3 edge3 = 1.0 - smoothstep(edgeLo, edgeHi, barycentric);
                 edge3 *= saturate(edgeKeep);
-                float edge = max(edge3.x, max(edge3.y, edge3.z));
+                return max(edge3.x, max(edge3.y, edge3.z));
+            }
+
+            float GlassComputeMeshEdgeMask(float3 barycentric, float3 edgeKeep)
+            {
+                float edge = GlassComputeMeshEdgeRaw(barycentric, edgeKeep);
                 float threshold = saturate(_MeshEdgeThreshold);
                 return saturate((edge - threshold) / max(1.0 - threshold, 1e-4));
+            }
+
+            float GlassComputeValidatedMeshEdgeMask(float3 barycentric, float3 edgeKeep)
+            {
+                float edgeDataValid = GlassComputeEdgeDataValidity(barycentric);
+                return GlassComputeMeshEdgeMask(barycentric, edgeKeep) * edgeDataValid;
+            }
+
+            float GlassComputeValidatedDistortionEdgeMask(float3 barycentric, float3 edgeKeep)
+            {
+                float edgeDataValid = GlassComputeEdgeDataValidity(barycentric);
+                float rawEdge = GlassComputeMeshEdgeRaw(barycentric, edgeKeep) * edgeDataValid;
+                // Distortion should react on a wider edge band than visual highlight thresholding.
+                return saturate(sqrt(saturate(rawEdge)));
+            }
+
+            float ComputeBaseRefractionScale(float normalizedThickness, float nearFade, float2 screenUV)
+            {
+                float refractionScale = _RefractionStrength * (0.25 + 0.75 * normalizedThickness);
+                refractionScale *= nearFade;
+
+                if (_ScreenEdgeFadePixels > 0.01)
+                {
+                    float2 borderDistance01 = min(screenUV, 1.0 - screenUV);
+                    float minBorderDistance = min(borderDistance01.x, borderDistance01.y);
+                    float pixelDistance = minBorderDistance * min(_ScreenParams.x, _ScreenParams.y);
+                    float edgeFade = saturate(pixelDistance / _ScreenEdgeFadePixels);
+                    refractionScale *= edgeFade;
+                }
+
+                return refractionScale;
+            }
+
+            float ComputeFaceEdgeDistortionGain(float edgeMask, float frontDepth)
+            {
+                float edgeBlend = saturate(edgeMask);
+                float faceEdgeDistortion = lerp(_DistortionFace, _DistortionEdge, edgeBlend);
+                float distanceAttenuation = 1.5 * rsqrt(max(frontDepth, 0.25));
+                return saturate(faceEdgeDistortion) * distanceAttenuation;
+            }
+
+            float ComposeRefractionScale(float baseRefractionScale, float distortionGain)
+            {
+                return baseRefractionScale * (1.0 + max(distortionGain, 0.0) * 1.5);
             }
 
             float4 frag(Varyings input) : SV_Target
@@ -539,16 +602,11 @@ Shader "refiaa/glass"
                 float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
                 float normalizedThickness = saturate(GlassNormalizeThickness(absorptionThickness, maxThicknessSafe));
-                float refractionScale = _RefractionStrength * (0.25 + 0.75 * normalizedThickness);
-                refractionScale *= nearFade;
-                if (_ScreenEdgeFadePixels > 0.01)
-                {
-                    float2 borderDistance01 = min(screenUV, 1.0 - screenUV);
-                    float minBorderDistance = min(borderDistance01.x, borderDistance01.y);
-                    float pixelDistance = minBorderDistance * min(_ScreenParams.x, _ScreenParams.y);
-                    float edgeFade = saturate(pixelDistance / _ScreenEdgeFadePixels);
-                    refractionScale *= edgeFade;
-                }
+                float meshEdgeMask = GlassComputeValidatedMeshEdgeMask(input.barycentric, input.edgeKeep);
+                float distortionEdgeMask = GlassComputeValidatedDistortionEdgeMask(input.barycentric, input.edgeKeep);
+                float baseRefractionScale = ComputeBaseRefractionScale(normalizedThickness, nearFade, screenUV);
+                float distortionGain = ComputeFaceEdgeDistortionGain(distortionEdgeMask, frontDepth);
+                float refractionScale = ComposeRefractionScale(baseRefractionScale, distortionGain);
 
                 float2 refractionOffset = normalVS.xy * refractionScale;
                 float2 refractedUV = ClampSceneUV(screenUV + refractionOffset);
@@ -558,7 +616,7 @@ Shader "refiaa/glass"
                 float3 sceneColor;
                 if (_UseChromaticAberration > 0.5)
                 {
-                    sceneColor = SampleChromaticSceneColor(refractedUV, refractedGrabPos, refractionOffset, refractionScale);
+                    sceneColor = SampleChromaticSceneColor(refractedUV, refractedGrabPos, refractionOffset, baseRefractionScale);
                 }
                 else
                 {
@@ -609,13 +667,7 @@ Shader "refiaa/glass"
 
                 if (_UseMeshEdge > 0.5)
                 {
-                    float barySum = input.barycentric.x + input.barycentric.y + input.barycentric.z;
-                    float baryMin = min(input.barycentric.x, min(input.barycentric.y, input.barycentric.z));
-                    float baryMax = max(input.barycentric.x, max(input.barycentric.y, input.barycentric.z));
-                    float edgeDataValid = 1.0 - step(0.01, abs(barySum - 1.0));
-                    edgeDataValid *= step(-0.001, baryMin) * step(baryMax, 1.001);
-                    float edgeMask = GlassComputeMeshEdgeMask(input.barycentric, input.edgeKeep) * edgeDataValid;
-                    float edgeWeight = saturate(edgeMask * _MeshEdgeColor.a * _MeshEdgeIntensity);
+                    float edgeWeight = saturate(meshEdgeMask * _MeshEdgeColor.a * _MeshEdgeIntensity);
                     finalColor = lerp(finalColor, _MeshEdgeColor.rgb, edgeWeight);
                 }
 
