@@ -30,6 +30,7 @@ Shader "refiaa/glass"
         _RefractionStrength("Refraction Strength", Range(0.000, 0.200)) = 0.010
         _DistortionFace("Distortion (Face)", Range(0.000, 1.000)) = 0.000
         _DistortionEdge("Distortion (Edge)", Range(0.000, 1.000)) = 0.000
+        _BackfaceVisibility("Backface Visibility", Range(0.000, 1.000)) = 0.350
         [Toggle] _UseChromaticAberration("Use Chromatic Aberration", Float) = 1
         _ChromaticAberration("Chromatic Aberration (Pixels)", Range(0.000, 3.000)) = 3.000
         _ScreenEdgeFadePixels("Refraction Screen Edge Fade (Pixels)", Range(0.0, 32.0)) = 32.000
@@ -680,6 +681,316 @@ Shader "refiaa/glass"
                 #endif
 
                 return float4(finalColor, 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "BACKFACE_OVERLAY"
+
+            Cull Front
+            ZWrite Off
+            ZTest LEqual
+            Blend SrcAlpha OneMinusSrcAlpha
+
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vertBack
+            #pragma fragment fragBack
+            #pragma multi_compile_instancing
+
+            #include "UnityCG.cginc"
+            #include "GlassCommon.cginc"
+
+            struct Attributes
+            {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+                float4 tangent : TANGENT;
+                float2 uv : TEXCOORD0;
+                float4 edgeData0 : TEXCOORD3;
+                float2 edgeData1 : TEXCOORD4;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                float4 screenPos : TEXCOORD1;
+                float4 grabPos : TEXCOORD2;
+                float3 worldPos : TEXCOORD3;
+                float3 normalWS : TEXCOORD4;
+                float3 tangentWS : TEXCOORD5;
+                float3 bitangentWS : TEXCOORD6;
+                float3 barycentric : TEXCOORD7;
+                float3 edgeKeep : TEXCOORD8;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            sampler2D _NormalMap;
+            sampler2D _SceneColorTex;
+            sampler2D _GrabTexture;
+            sampler2D _UdonGlassSceneColorL;
+            sampler2D _UdonGlassSceneColorR;
+
+            float4 _BaseTint;
+            float4 _TransmissionColorAtDistance;
+            float4 _NormalMap_ST;
+            float _ReferenceDistance;
+            float _TransmittanceInfluence;
+            float _FallbackThickness;
+            float _FallbackUseAngle;
+            float _MinViewDot;
+            float _ThicknessScale;
+            float _ThicknessBias;
+            float _MaxThickness;
+            float _NearFadeDistance;
+            float _RefractionStrength;
+            float _DistortionFace;
+            float _DistortionEdge;
+            float _BackfaceVisibility;
+            float _UseChromaticAberration;
+            float _ChromaticAberration;
+            float _ScreenEdgeFadePixels;
+            float _MeshEdgeWidth;
+            float _MeshEdgeSoftness;
+            float _NormalScale;
+            float _UseSceneColorTexture;
+            float _UseUdonStereoTextures;
+            float _UseGrabPassFallback;
+            float _UVClamp;
+
+            Varyings vertBack(Attributes input)
+            {
+                Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(Varyings, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+                output.positionCS = UnityObjectToClipPos(input.vertex);
+                output.uv = input.uv;
+                output.screenPos = ComputeScreenPos(output.positionCS);
+                output.grabPos = ComputeGrabScreenPos(output.positionCS);
+                output.worldPos = mul(unity_ObjectToWorld, input.vertex).xyz;
+
+                output.normalWS = UnityObjectToWorldNormal(input.normal);
+                output.tangentWS = UnityObjectToWorldDir(input.tangent.xyz);
+                float tangentSign = input.tangent.w * unity_WorldTransformParams.w;
+                output.bitangentWS = cross(output.normalWS, output.tangentWS) * tangentSign;
+                output.barycentric = input.edgeData0.xyz;
+                output.edgeKeep = float3(input.edgeData0.w, input.edgeData1.x, input.edgeData1.y);
+
+                return output;
+            }
+
+            float2 ClampSceneUV(float2 uv)
+            {
+                float padding = saturate(_UVClamp);
+                return clamp(uv, padding, 1.0 - padding);
+            }
+
+            float2 GetScreenTexelSize()
+            {
+                return 1.0 / max(_ScreenParams.xy, float2(1.0, 1.0));
+            }
+
+            float3 SampleStereoSceneColor(float2 uv)
+            {
+                return GlassIsStereoEyeRight() ? tex2D(_UdonGlassSceneColorR, uv).rgb : tex2D(_UdonGlassSceneColorL, uv).rgb;
+            }
+
+            float3 SampleGrabColor(float4 grabPos)
+            {
+                float invW = 1.0 / max(grabPos.w, 1e-5);
+                float2 uv = ClampSceneUV(grabPos.xy * invW);
+                return tex2D(_GrabTexture, uv).rgb;
+            }
+
+            float3 SampleSceneColor(float2 uv, float4 grabPos)
+            {
+                if (_UseSceneColorTexture > 0.5)
+                {
+                    if (_UseUdonStereoTextures > 0.5)
+                    {
+                        return SampleStereoSceneColor(uv);
+                    }
+                    return tex2D(_SceneColorTex, uv).rgb;
+                }
+
+                if (_UseGrabPassFallback > 0.5)
+                {
+                    if (grabPos.w <= 1e-5)
+                    {
+                        return tex2D(_GrabTexture, ClampSceneUV(uv)).rgb;
+                    }
+                    return SampleGrabColor(grabPos);
+                }
+
+                return 0.0.xxx;
+            }
+
+            float3 ComputeNormalWS(Varyings input, float2 normalUV)
+            {
+                float3 normalTS = GlassUnpackNormalTS(_NormalMap, normalUV, _NormalScale);
+                float tangentLen2 = dot(input.tangentWS, input.tangentWS);
+                float3 normalWS = normalize(input.normalWS);
+
+                if (tangentLen2 > 1e-5)
+                {
+                    normalWS = GlassTransformTangentToWorld(normalTS, input.tangentWS, input.bitangentWS, input.normalWS);
+                }
+
+                return normalWS;
+            }
+
+            float3 SampleChromaticSceneColor(float2 refractedUV, float4 refractedGrabPos, float2 refractionOffset, float chromaScale)
+            {
+                float2 pixelSize = GetScreenTexelSize();
+                float2 chromaDir = normalize(refractionOffset + float2(1e-6, 0.0));
+                float chromaFade = saturate(chromaScale / max(_RefractionStrength, 1e-5));
+                float2 chromaOffset = chromaDir * (_ChromaticAberration * pixelSize * chromaFade);
+
+                float2 uvR = ClampSceneUV(refractedUV + chromaOffset);
+                float2 uvB = ClampSceneUV(refractedUV - chromaOffset);
+                float4 grabPosR = refractedGrabPos;
+                float4 grabPosB = refractedGrabPos;
+                grabPosR.xy += chromaOffset * grabPosR.w;
+                grabPosB.xy -= chromaOffset * grabPosB.w;
+
+                float3 sceneColor;
+                sceneColor.r = SampleSceneColor(uvR, grabPosR).r;
+                sceneColor.g = SampleSceneColor(refractedUV, refractedGrabPos).g;
+                sceneColor.b = SampleSceneColor(uvB, grabPosB).b;
+                return sceneColor;
+            }
+
+            float GlassComputeEdgeDataValidity(float3 barycentric)
+            {
+                float barySum = barycentric.x + barycentric.y + barycentric.z;
+                float baryMin = min(barycentric.x, min(barycentric.y, barycentric.z));
+                float baryMax = max(barycentric.x, max(barycentric.y, barycentric.z));
+                float edgeDataValid = 1.0 - step(0.01, abs(barySum - 1.0));
+                edgeDataValid *= step(-0.001, baryMin) * step(baryMax, 1.001);
+                return edgeDataValid;
+            }
+
+            float GlassComputeMeshEdgeRaw(float3 barycentric, float3 edgeKeep)
+            {
+                float widthPx = max(_MeshEdgeWidth, 0.0);
+                float softnessPx = max(_MeshEdgeSoftness, 0.001);
+                float3 fw = max(fwidth(barycentric), 1e-5.xxx);
+                float3 edgeLo = fw * widthPx;
+                float3 edgeHi = edgeLo + fw * softnessPx;
+                float3 edge3 = 1.0 - smoothstep(edgeLo, edgeHi, barycentric);
+                edge3 *= saturate(edgeKeep);
+                return max(edge3.x, max(edge3.y, edge3.z));
+            }
+
+            float GlassComputeValidatedDistortionEdgeMask(float3 barycentric, float3 edgeKeep)
+            {
+                float edgeDataValid = GlassComputeEdgeDataValidity(barycentric);
+                float rawEdge = GlassComputeMeshEdgeRaw(barycentric, edgeKeep) * edgeDataValid;
+                return saturate(sqrt(saturate(rawEdge)));
+            }
+
+            float ComputeBaseRefractionScale(float normalizedThickness, float nearFade, float2 screenUV)
+            {
+                float refractionScale = _RefractionStrength * (0.25 + 0.75 * normalizedThickness);
+                refractionScale *= nearFade;
+
+                if (_ScreenEdgeFadePixels > 0.01)
+                {
+                    float2 borderDistance01 = min(screenUV, 1.0 - screenUV);
+                    float minBorderDistance = min(borderDistance01.x, borderDistance01.y);
+                    float pixelDistance = minBorderDistance * min(_ScreenParams.x, _ScreenParams.y);
+                    float edgeFade = saturate(pixelDistance / _ScreenEdgeFadePixels);
+                    refractionScale *= edgeFade;
+                }
+
+                return refractionScale;
+            }
+
+            float ComputeFaceEdgeDistortionGain(float edgeMask, float frontDepth)
+            {
+                float edgeBlend = saturate(edgeMask);
+                float faceEdgeDistortion = lerp(_DistortionFace, _DistortionEdge, edgeBlend);
+                float depthSafe = max(frontDepth, 1e-3);
+                float minimumDistortion = max(_RefractionStrength * 2.0, 0.0);
+                return max(faceEdgeDistortion, minimumDistortion) / depthSafe;
+            }
+
+            float ComposeRefractionScale(float baseRefractionScale, float distortionGain)
+            {
+                return min(baseRefractionScale + max(distortionGain, 0.0), 0.25);
+            }
+
+            float4 fragBack(Varyings input) : SV_Target
+            {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+                float overlayStrength = saturate(_BackfaceVisibility) * saturate(_BaseTint.a);
+                if (overlayStrength <= 1e-4)
+                {
+                    return float4(0.0, 0.0, 0.0, 0.0);
+                }
+
+                float3 viewDirWS = normalize(UnityWorldSpaceViewDir(input.worldPos));
+                float2 normalUV = TRANSFORM_TEX(input.uv, _NormalMap);
+                float3 normalWS = ComputeNormalWS(input, normalUV);
+                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
+
+                float2 screenUV = ClampSceneUV(GlassGetScreenUV(input.screenPos));
+                float frontDepth = max(-mul(UNITY_MATRIX_V, float4(input.worldPos, 1.0)).z, 0.0);
+
+                float approxThickness = _FallbackThickness;
+                if (_FallbackUseAngle > 0.5)
+                {
+                    approxThickness = GlassComputeApproxThickness(_FallbackThickness, normalWS, viewDirWS, _MinViewDot);
+                }
+
+                approxThickness = approxThickness * _ThicknessScale + _ThicknessBias;
+                approxThickness = clamp(approxThickness, 0.0, _MaxThickness);
+
+                float nearFade = 1.0;
+                if (_NearFadeDistance > 1e-4)
+                {
+                    nearFade = saturate(frontDepth / _NearFadeDistance);
+                }
+                approxThickness *= nearFade;
+
+                float maxThicknessSafe = max(_MaxThickness, 1e-5);
+                float normalizedThickness = saturate(GlassNormalizeThickness(approxThickness, maxThicknessSafe));
+
+                float distortionEdgeMask = GlassComputeValidatedDistortionEdgeMask(input.barycentric, input.edgeKeep);
+                float baseRefractionScale = ComputeBaseRefractionScale(normalizedThickness, nearFade, screenUV);
+                float distortionGain = ComputeFaceEdgeDistortionGain(distortionEdgeMask, frontDepth);
+                float refractionScale = ComposeRefractionScale(baseRefractionScale, distortionGain);
+
+                float2 refractionOffset = normalVS.xy * refractionScale;
+                float2 refractedUV = ClampSceneUV(screenUV + refractionOffset);
+                float4 refractedGrabPos = input.grabPos;
+                refractedGrabPos.xy += refractionOffset * refractedGrabPos.w;
+
+                float3 sceneColor;
+                if (_UseChromaticAberration > 0.5)
+                {
+                    sceneColor = SampleChromaticSceneColor(refractedUV, refractedGrabPos, refractionOffset, baseRefractionScale);
+                }
+                else
+                {
+                    sceneColor = SampleSceneColor(refractedUV, refractedGrabPos);
+                }
+
+                float3 sigma = GlassSigmaFromReferenceColor(_TransmissionColorAtDistance.rgb, _ReferenceDistance);
+                sigma *= saturate(_TransmittanceInfluence);
+                float3 transmittance = GlassComputeTransmittance(sigma, approxThickness);
+
+                float3 finalColor = sceneColor * transmittance;
+
+                float alpha = saturate(overlayStrength);
+                return float4(finalColor, alpha);
             }
             ENDCG
         }

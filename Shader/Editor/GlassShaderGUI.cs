@@ -37,6 +37,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent RefractionStrength = new GUIContent("Refraction Strength");
         public static readonly GUIContent DistortionFace = new GUIContent("Distortion (Face)");
         public static readonly GUIContent DistortionEdge = new GUIContent("Distortion (Edge)");
+        public static readonly GUIContent BackfaceVisibility = new GUIContent("Backface Visibility");
         public static readonly GUIContent UseChromaticAberration = new GUIContent("Use Chromatic Aberration");
         public static readonly GUIContent ChromaticAberration = new GUIContent("Chromatic Aberration (Pixels)");
         public static readonly GUIContent RefractionScreenEdgeFade = new GUIContent("Refraction Screen Edge Fade (Pixels)");
@@ -105,6 +106,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string RefractionStrength = "_RefractionStrength";
         public const string DistortionFace = "_DistortionFace";
         public const string DistortionEdge = "_DistortionEdge";
+        public const string BackfaceVisibility = "_BackfaceVisibility";
         public const string UseChromaticAberration = "_UseChromaticAberration";
         public const string ChromaticAberration = "_ChromaticAberration";
         public const string ScreenEdgeFadePixels = "_ScreenEdgeFadePixels";
@@ -193,6 +195,7 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _refractionStrength;
     private MaterialProperty _distortionFace;
     private MaterialProperty _distortionEdge;
+    private MaterialProperty _backfaceVisibility;
     private MaterialProperty _useChromaticAberration;
     private MaterialProperty _chromaticAberration;
     private MaterialProperty _screenEdgeFadePixels;
@@ -321,6 +324,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _refractionStrength, Names.RefractionStrength, properties);
         BindProperty(ref _distortionFace, Names.DistortionFace, properties);
         BindProperty(ref _distortionEdge, Names.DistortionEdge, properties);
+        BindProperty(ref _backfaceVisibility, Names.BackfaceVisibility, properties);
         BindProperty(ref _useChromaticAberration, Names.UseChromaticAberration, properties);
         BindProperty(ref _chromaticAberration, Names.ChromaticAberration, properties);
         BindProperty(ref _screenEdgeFadePixels, Names.ScreenEdgeFadePixels, properties);
@@ -407,6 +411,7 @@ public sealed class GlassShaderGUI : ShaderGUI
         DrawProperty(materialEditor, _refractionStrength, Styles.RefractionStrength);
         DrawProperty(materialEditor, _distortionFace, Styles.DistortionFace);
         DrawProperty(materialEditor, _distortionEdge, Styles.DistortionEdge);
+        DrawProperty(materialEditor, _backfaceVisibility, Styles.BackfaceVisibility);
         DrawToggle(_useChromaticAberration, Styles.UseChromaticAberration);
         using (new EditorGUI.DisabledScope(!GetToggleValue(_useChromaticAberration)))
         {
