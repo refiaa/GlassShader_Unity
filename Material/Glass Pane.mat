@@ -16,6 +16,7 @@ Material:
   m_InvalidKeywords:
   - _BACKDEPTHISLINEAR_ON
   - _FALLBACKUSEANGLE_ON
+  - _GLASSRAINENABLED_ON
   - _MESHSUPPRESSDIAGONAL_ON
   - _USEBACKDEPTHTEXTURE_ON
   - _USEBOUNDSTHICKNESSFALLBACK_ON
@@ -155,6 +156,22 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _FurVectorTex:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GlassRainDropletMask:
+        m_Texture: {fileID: 2800000, guid: e33802c3a1e8e1a47a5ef3efa8dfffdd, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GlassRainMask:
+        m_Texture: {fileID: 2800000, guid: a24bb055d3ee58443a152440d2340e88, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GlassRainNoiseTex:
+        m_Texture: {fileID: 2800000, guid: 923a20e8c8f439648bdf7025c790db42, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GlassRainSheet:
+        m_Texture: {fileID: 2800000, guid: df89a63673a32f4438fba4fb13f0f640, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _GlitterColorTex:
@@ -468,6 +485,22 @@ Material:
     - _FurZWrite: 1
     - _GSAAStrength: 0
     - _GlassOITActive: 0
+    - _GlassRainAutoBlend: 0.2
+    - _GlassRainAutoThreshold: 0.35
+    - _GlassRainDynamicDroplets: 0.5
+    - _GlassRainEnabled: 0
+    - _GlassRainMaskChannel: 0
+    - _GlassRainMode: 1
+    - _GlassRainNormalBlend: 1
+    - _GlassRainRippleDensity: 1
+    - _GlassRainRippleScale: 20
+    - _GlassRainRippleSpeed: 2
+    - _GlassRainRippleStrength: 0.35
+    - _GlassRainSheetColumns: 8
+    - _GlassRainSheetRows: 8
+    - _GlassRainSpeed: 82.2
+    - _GlassRainStrength: 2
+    - _GlassRainWetness: 0.25
     - _GlitterAngleRandomize: 0
     - _GlitterApplyShape: 0
     - _GlitterApplyTransparency: 1
@@ -626,6 +659,12 @@ Material:
     - _ReflectionCubeEnableLighting: 1
     - _ReflectionCubeOverride: 0
     - _ReflectionNormalStrength: 1
+    - _RefractionBlurKernelSigma: 1.35
+    - _RefractionBlurMaxPixels: 6
+    - _RefractionBlurRoughnessInfluence: 0.5
+    - _RefractionBlurScale: 0.03
+    - _RefractionBlurStrength: 1
+    - _RefractionBlurThicknessInfluence: 0.5
     - _RefractionRoughBlur: 0
     - _RefractionStrength: 0.002
     - _RimApplyTransparency: 1
@@ -761,6 +800,7 @@ Material:
     - _UsePOM: 0
     - _UseParallax: 0
     - _UseReflection: 0
+    - _UseRefractionBlur: 0
     - _UseRim: 0
     - _UseRimShade: 0
     - _UseSSR: 1
@@ -816,6 +856,7 @@ Material:
     - _FallbackBoundsMin: {r: -0.5, g: -0.5, b: -0.5, a: 0}
     - _FurRimColor: {r: 0, g: 0, b: 0, a: 1}
     - _FurVector: {r: 0, g: 0, b: 1, a: 0.02}
+    - _GlassRainTiling: {r: 1.5, g: 1.5, b: 0, a: 0}
     - _GlitterAtras: {r: 1, g: 1, b: 0, a: 0}
     - _GlitterColor: {r: 1, g: 1, b: 1, a: 1}
     - _GlitterParams1: {r: 256, g: 256, b: 0.16, a: 50}
