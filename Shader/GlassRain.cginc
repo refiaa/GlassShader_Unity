@@ -34,6 +34,15 @@ inline float GlassRainSelectChannel(float4 rgba, float channel)
     return rgba.a;
 }
 
+inline float2 GlassRainResolveUV(float2 uv, float isBackFacePass)
+{
+    if (isBackFacePass > 0.5)
+    {
+        uv.y = 1.0 - uv.y;
+    }
+    return uv;
+}
+
 inline float2 GlassRainGetFlipbookUV(float2 uv, float columns, float rows, float speed)
 {
     float safeColumns = max(columns, 1.0);
@@ -99,7 +108,7 @@ inline void GlassRainBuildRipplesTS(float2 baseUV, float rainMask, out float3 ra
     wetness = saturate(dot(rippleXY, rippleXY) * 1.1 + rainMask * 0.25);
 }
 
-inline void GlassApplyRain(in Varyings input, inout float3 normalWS, inout float perceptualRoughness)
+inline void GlassApplyRain(in Varyings input, inout float3 normalWS, inout float perceptualRoughness, float isBackFacePass)
 {
     [branch]
     if (_GlassRainEnabled <= 0.5)
@@ -107,7 +116,8 @@ inline void GlassApplyRain(in Varyings input, inout float3 normalWS, inout float
         return;
     }
 
-    float2 maskUV = TRANSFORM_TEX(input.uv, _GlassRainMask);
+    float2 baseUV = GlassRainResolveUV(input.uv, isBackFacePass);
+    float2 maskUV = TRANSFORM_TEX(baseUV, _GlassRainMask);
     float rainMask = saturate(GlassRainSelectChannel(tex2D(_GlassRainMask, maskUV), _GlassRainMaskChannel));
     [branch]
     if (rainMask <= 1e-4)
@@ -127,16 +137,16 @@ inline void GlassApplyRain(in Varyings input, inout float3 normalWS, inout float
     }
     else if (mode < 1.5)
     {
-        GlassRainBuildDropletsTS(input.uv, rainMask, rainDropletsTS, wetDroplets);
+        GlassRainBuildDropletsTS(baseUV, rainMask, rainDropletsTS, wetDroplets);
     }
     else if (mode < 2.5)
     {
-        GlassRainBuildRipplesTS(input.uv, rainMask, rainRipplesTS, wetRipples);
+        GlassRainBuildRipplesTS(baseUV, rainMask, rainRipplesTS, wetRipples);
     }
     else
     {
-        GlassRainBuildDropletsTS(input.uv, rainMask, rainDropletsTS, wetDroplets);
-        GlassRainBuildRipplesTS(input.uv, rainMask, rainRipplesTS, wetRipples);
+        GlassRainBuildDropletsTS(baseUV, rainMask, rainDropletsTS, wetDroplets);
+        GlassRainBuildRipplesTS(baseUV, rainMask, rainRipplesTS, wetRipples);
     }
 
     float3 rainTS = rainDropletsTS;

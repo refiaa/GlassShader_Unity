@@ -26,6 +26,7 @@ Material:
   - _USEMESHEDGEOVERLAY_ON
   - _USEMESHEDGE_ON
   - _USEOUTLINE_ON
+  - _USEREFRACTIONBLUR_ON
   - _USESPECULAROCCLUSION_ON
   - _USESSR_ON
   m_LightmapFlags: 4
@@ -660,11 +661,11 @@ Material:
     - _ReflectionCubeOverride: 0
     - _ReflectionNormalStrength: 1
     - _RefractionBlurKernelSigma: 1.35
-    - _RefractionBlurMaxPixels: 6
+    - _RefractionBlurMaxPixels: 24
     - _RefractionBlurRoughnessInfluence: 0.5
     - _RefractionBlurScale: 0.03
     - _RefractionBlurStrength: 1
-    - _RefractionBlurThicknessInfluence: 0.5
+    - _RefractionBlurThicknessInfluence: 0
     - _RefractionRoughBlur: 0
     - _RefractionStrength: 0.002
     - _RimApplyTransparency: 1

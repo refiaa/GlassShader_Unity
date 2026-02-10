@@ -352,7 +352,7 @@ Shader "refiaa/glass"
                 float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
                 float normalizedThickness = saturate(GlassNormalizeThickness(absorptionThickness, maxThicknessSafe));
-                GlassApplyRain(input, normalWS, perceptualRoughness);
+                GlassApplyRain(input, normalWS, perceptualRoughness, 0.0);
                 roughnessLinear = max(perceptualRoughness * perceptualRoughness, 0.003);
                 float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
                 float meshEdgeMask = GlassComputeValidatedMeshEdgeMask(input.barycentric, input.edgeKeep);
@@ -656,7 +656,7 @@ Shader "refiaa/glass"
 
                 float maxThicknessSafe = max(_MaxThickness, 1e-5);
                 float normalizedThickness = saturate(GlassNormalizeThickness(approxThickness, maxThicknessSafe));
-                GlassApplyRain(input, normalWS, perceptualRoughness);
+                GlassApplyRain(input, normalWS, perceptualRoughness, 1.0);
                 float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
 
                 float distortionEdgeMask = GlassComputeValidatedDistortionEdgeMask(input.barycentric, input.edgeKeep);
