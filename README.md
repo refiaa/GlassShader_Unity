@@ -1,12 +1,5 @@
 # Realistic Volumetric Glass Shader (Unity BRP)
 
-
-<div align="center">
-  <img src="./Media/image2.png" width="100%" alt="Refraction Detail" />
-  <br/>
-  <em>Real-time Volumetric Absorption & Refraction Demo</em>
-</div>
-
 ## Introduction
 
 A physically-based glass shader designed for the **Unity Built-in Render Pipeline (BRP)** and **VRChat** environments.
