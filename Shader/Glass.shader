@@ -44,6 +44,29 @@ Shader "refiaa/glass"
         _RefractionBlurScale("Physical Blur Scale", Range(0.001, 0.100)) = 0.030
         _RefractionBlurKernelSigma("Kernel Softness", Range(0.350, 3.000)) = 1.350
 
+        [Header(Rain)]
+        [Toggle] _GlassRainEnabled("Enable Rain", Float) = 0
+        [Enum(Off,0, Droplets,1, Ripples,2, Automatic,3)] _GlassRainMode("Mode", Float) = 1
+        _GlassRainNormalBlend("Normal Blend", Range(0.000, 1.000)) = 1.000
+        _GlassRainWetness("Wetness", Range(0.000, 1.000)) = 0.250
+        _GlassRainStrength("Droplet Strength", Range(0.000, 2.000)) = 0.350
+        _GlassRainSpeed("Droplet Speed", Range(0.000, 120.000)) = 40.000
+        _GlassRainTiling("Droplet Tiling (XY)", Vector) = (1.5, 1.5, 0, 0)
+        _GlassRainSheetRows("Sheet Rows", Range(1.000, 16.000)) = 8.000
+        _GlassRainSheetColumns("Sheet Columns", Range(1.000, 16.000)) = 8.000
+        _GlassRainDynamicDroplets("Dynamic Droplets", Range(0.000, 1.000)) = 0.500
+        _GlassRainRippleStrength("Ripple Strength", Range(0.000, 2.000)) = 0.350
+        _GlassRainRippleScale("Ripple Scale", Range(1.000, 64.000)) = 20.000
+        _GlassRainRippleSpeed("Ripple Speed", Range(0.000, 10.000)) = 2.000
+        _GlassRainRippleDensity("Ripple Density", Range(0.500, 8.000)) = 1.000
+        _GlassRainAutoThreshold("Auto Angle Threshold", Range(0.000, 1.000)) = 0.350
+        _GlassRainAutoBlend("Auto Angle Blend", Range(0.010, 0.500)) = 0.200
+        _GlassRainMask("Rain Mask", 2D) = "white" {}
+        [Enum(Red,0, Green,1, Blue,2, Alpha,3)] _GlassRainMaskChannel("Rain Mask Channel", Float) = 0
+        [NoScaleOffset] _GlassRainSheet("Rain Texture Sheet", 2D) = "black" {}
+        [NoScaleOffset] _GlassRainDropletMask("Rain Droplet Mask", 2D) = "white" {}
+        [NoScaleOffset] _GlassRainNoiseTex("Rain Noise Texture", 2D) = "gray" {}
+
         [Header(Reflection)]
         _IOR("Index Of Refraction", Range(1.000, 2.000)) = 1.000
         _ReflectionTint("Reflection Tint", Color) = (1, 1, 1, 1)
@@ -224,6 +247,7 @@ Shader "refiaa/glass"
             float _UVClamp;
 
             #include "GlassPassShared.cginc"
+            #include "GlassRain.cginc"
             #include "GlassForwardThickness.cginc"
             #include "GlassForwardSurface.cginc"
 
@@ -275,7 +299,6 @@ Shader "refiaa/glass"
                 SampleSurfaceParameters(input.uv, perceptualRoughness, roughnessLinear, metallic);
 
                 float3 normalWS = ComputeNormalWS(input, normalUV);
-                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
 
                 float2 screenUV = ClampSceneUV(GlassGetScreenUV(input.screenPos));
                 float frontDepth = max(-mul(UNITY_MATRIX_V, float4(input.worldPos, 1.0)).z, 0.0);
@@ -329,6 +352,9 @@ Shader "refiaa/glass"
                 float3 transmittance = GlassComputeTransmittance(sigma, curvedAbsorptionThickness);
 
                 float normalizedThickness = saturate(GlassNormalizeThickness(absorptionThickness, maxThicknessSafe));
+                GlassApplyRain(input, normalWS, perceptualRoughness);
+                roughnessLinear = max(perceptualRoughness * perceptualRoughness, 0.003);
+                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
                 float meshEdgeMask = GlassComputeValidatedMeshEdgeMask(input.barycentric, input.edgeKeep);
                 float distortionEdgeMask = GlassComputeValidatedDistortionEdgeMask(input.barycentric, input.edgeKeep);
                 float baseRefractionScale = ComputeBaseRefractionScale(normalizedThickness, nearFade, screenUV);
@@ -548,6 +574,7 @@ Shader "refiaa/glass"
             float _UVClamp;
 
             #include "GlassPassShared.cginc"
+            #include "GlassRain.cginc"
 
             Varyings vertBack(Attributes input)
             {
@@ -606,7 +633,6 @@ Shader "refiaa/glass"
                 float3 viewDirWS = normalize(UnityWorldSpaceViewDir(input.worldPos));
                 float2 normalUV = TRANSFORM_TEX(input.uv, _NormalMap);
                 float3 normalWS = ComputeNormalWS(input, normalUV);
-                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
                 float perceptualRoughness = SamplePerceptualRoughness(input.uv);
 
                 float2 screenUV = ClampSceneUV(GlassGetScreenUV(input.screenPos));
@@ -630,6 +656,8 @@ Shader "refiaa/glass"
 
                 float maxThicknessSafe = max(_MaxThickness, 1e-5);
                 float normalizedThickness = saturate(GlassNormalizeThickness(approxThickness, maxThicknessSafe));
+                GlassApplyRain(input, normalWS, perceptualRoughness);
+                float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS);
 
                 float distortionEdgeMask = GlassComputeValidatedDistortionEdgeMask(input.barycentric, input.edgeKeep);
                 float baseRefractionScale = ComputeBaseRefractionScale(normalizedThickness, nearFade, screenUV);

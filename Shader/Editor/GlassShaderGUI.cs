@@ -7,6 +7,7 @@ public sealed class GlassShaderGUI : ShaderGUI
     {
         public static readonly GUIContent Refraction = new GUIContent("Refraction");
         public static readonly GUIContent RefractionBlur = new GUIContent("Refraction Blur");
+        public static readonly GUIContent Rain = new GUIContent("Rain");
         public static readonly GUIContent TexturesAndShading = new GUIContent("Textures And Shading");
         public static readonly GUIContent GlassBodyThicknessColor = new GUIContent("Glass Body (Thickness & Color)");
         public static readonly GUIContent FallbackAndInputs = new GUIContent("Fallback And Inputs");
@@ -49,6 +50,28 @@ public sealed class GlassShaderGUI : ShaderGUI
         public static readonly GUIContent RefractionBlurThicknessInfluence = new GUIContent("Thickness Influence");
         public static readonly GUIContent RefractionBlurScale = new GUIContent("Physical Blur Scale");
         public static readonly GUIContent RefractionBlurKernelSigma = new GUIContent("Kernel Softness");
+
+        public static readonly GUIContent GlassRainEnabled = new GUIContent("Enable Rain");
+        public static readonly GUIContent GlassRainMode = new GUIContent("Mode");
+        public static readonly GUIContent GlassRainNormalBlend = new GUIContent("Normal Blend");
+        public static readonly GUIContent GlassRainWetness = new GUIContent("Wetness");
+        public static readonly GUIContent GlassRainStrength = new GUIContent("Droplet Strength");
+        public static readonly GUIContent GlassRainSpeed = new GUIContent("Droplet Speed");
+        public static readonly GUIContent GlassRainTiling = new GUIContent("Droplet Tiling (XY)");
+        public static readonly GUIContent GlassRainSheetRows = new GUIContent("Sheet Rows");
+        public static readonly GUIContent GlassRainSheetColumns = new GUIContent("Sheet Columns");
+        public static readonly GUIContent GlassRainDynamicDroplets = new GUIContent("Dynamic Droplets");
+        public static readonly GUIContent GlassRainRippleStrength = new GUIContent("Ripple Strength");
+        public static readonly GUIContent GlassRainRippleScale = new GUIContent("Ripple Scale");
+        public static readonly GUIContent GlassRainRippleSpeed = new GUIContent("Ripple Speed");
+        public static readonly GUIContent GlassRainRippleDensity = new GUIContent("Ripple Density");
+        public static readonly GUIContent GlassRainAutoThreshold = new GUIContent("Auto Angle Threshold");
+        public static readonly GUIContent GlassRainAutoBlend = new GUIContent("Auto Angle Blend");
+        public static readonly GUIContent GlassRainMask = new GUIContent("Rain Mask");
+        public static readonly GUIContent GlassRainMaskChannel = new GUIContent("Rain Mask Channel");
+        public static readonly GUIContent GlassRainSheet = new GUIContent("Rain Texture Sheet");
+        public static readonly GUIContent GlassRainDropletMask = new GUIContent("Rain Droplet Mask");
+        public static readonly GUIContent GlassRainNoiseTex = new GUIContent("Rain Noise Texture");
 
         public static readonly GUIContent IndexOfRefraction = new GUIContent("Index Of Refraction");
         public static readonly GUIContent ReflectionTint = new GUIContent("Reflection Tint");
@@ -126,6 +149,28 @@ public sealed class GlassShaderGUI : ShaderGUI
         public const string RefractionBlurScale = "_RefractionBlurScale";
         public const string RefractionBlurKernelSigma = "_RefractionBlurKernelSigma";
 
+        public const string GlassRainEnabled = "_GlassRainEnabled";
+        public const string GlassRainMode = "_GlassRainMode";
+        public const string GlassRainNormalBlend = "_GlassRainNormalBlend";
+        public const string GlassRainWetness = "_GlassRainWetness";
+        public const string GlassRainStrength = "_GlassRainStrength";
+        public const string GlassRainSpeed = "_GlassRainSpeed";
+        public const string GlassRainTiling = "_GlassRainTiling";
+        public const string GlassRainSheetRows = "_GlassRainSheetRows";
+        public const string GlassRainSheetColumns = "_GlassRainSheetColumns";
+        public const string GlassRainDynamicDroplets = "_GlassRainDynamicDroplets";
+        public const string GlassRainRippleStrength = "_GlassRainRippleStrength";
+        public const string GlassRainRippleScale = "_GlassRainRippleScale";
+        public const string GlassRainRippleSpeed = "_GlassRainRippleSpeed";
+        public const string GlassRainRippleDensity = "_GlassRainRippleDensity";
+        public const string GlassRainAutoThreshold = "_GlassRainAutoThreshold";
+        public const string GlassRainAutoBlend = "_GlassRainAutoBlend";
+        public const string GlassRainMask = "_GlassRainMask";
+        public const string GlassRainMaskChannel = "_GlassRainMaskChannel";
+        public const string GlassRainSheet = "_GlassRainSheet";
+        public const string GlassRainDropletMask = "_GlassRainDropletMask";
+        public const string GlassRainNoiseTex = "_GlassRainNoiseTex";
+
         public const string Ior = "_IOR";
         public const string ReflectionTint = "_ReflectionTint";
         public const string EnvReflectionStrength = "_EnvReflectionStrength";
@@ -178,6 +223,7 @@ public sealed class GlassShaderGUI : ShaderGUI
 
     private static bool _showRefraction = true;
     private static bool _showRefractionBlur = true;
+    private static bool _showRain;
     private static bool _showTexturesAndShading = true;
     private static bool _showGlassBodyThicknessColor = true;
     private static bool _showFallbackAndInputs;
@@ -222,6 +268,28 @@ public sealed class GlassShaderGUI : ShaderGUI
     private MaterialProperty _refractionBlurThicknessInfluence;
     private MaterialProperty _refractionBlurScale;
     private MaterialProperty _refractionBlurKernelSigma;
+
+    private MaterialProperty _glassRainEnabled;
+    private MaterialProperty _glassRainMode;
+    private MaterialProperty _glassRainNormalBlend;
+    private MaterialProperty _glassRainWetness;
+    private MaterialProperty _glassRainStrength;
+    private MaterialProperty _glassRainSpeed;
+    private MaterialProperty _glassRainTiling;
+    private MaterialProperty _glassRainSheetRows;
+    private MaterialProperty _glassRainSheetColumns;
+    private MaterialProperty _glassRainDynamicDroplets;
+    private MaterialProperty _glassRainRippleStrength;
+    private MaterialProperty _glassRainRippleScale;
+    private MaterialProperty _glassRainRippleSpeed;
+    private MaterialProperty _glassRainRippleDensity;
+    private MaterialProperty _glassRainAutoThreshold;
+    private MaterialProperty _glassRainAutoBlend;
+    private MaterialProperty _glassRainMask;
+    private MaterialProperty _glassRainMaskChannel;
+    private MaterialProperty _glassRainSheet;
+    private MaterialProperty _glassRainDropletMask;
+    private MaterialProperty _glassRainNoiseTex;
 
     private MaterialProperty _ior;
     private MaterialProperty _reflectionTint;
@@ -291,6 +359,14 @@ public sealed class GlassShaderGUI : ShaderGUI
         {
             BeginSectionBody();
             DrawRefractionBlur(materialEditor);
+            EndSectionBody();
+        }
+
+        _showRain = DrawSectionHeader(Styles.Rain, _showRain);
+        if (_showRain)
+        {
+            BeginSectionBody();
+            DrawRain(materialEditor);
             EndSectionBody();
         }
 
@@ -366,6 +442,28 @@ public sealed class GlassShaderGUI : ShaderGUI
         BindProperty(ref _refractionBlurThicknessInfluence, Names.RefractionBlurThicknessInfluence, properties);
         BindProperty(ref _refractionBlurScale, Names.RefractionBlurScale, properties);
         BindProperty(ref _refractionBlurKernelSigma, Names.RefractionBlurKernelSigma, properties);
+
+        BindProperty(ref _glassRainEnabled, Names.GlassRainEnabled, properties);
+        BindProperty(ref _glassRainMode, Names.GlassRainMode, properties);
+        BindProperty(ref _glassRainNormalBlend, Names.GlassRainNormalBlend, properties);
+        BindProperty(ref _glassRainWetness, Names.GlassRainWetness, properties);
+        BindProperty(ref _glassRainStrength, Names.GlassRainStrength, properties);
+        BindProperty(ref _glassRainSpeed, Names.GlassRainSpeed, properties);
+        BindProperty(ref _glassRainTiling, Names.GlassRainTiling, properties);
+        BindProperty(ref _glassRainSheetRows, Names.GlassRainSheetRows, properties);
+        BindProperty(ref _glassRainSheetColumns, Names.GlassRainSheetColumns, properties);
+        BindProperty(ref _glassRainDynamicDroplets, Names.GlassRainDynamicDroplets, properties);
+        BindProperty(ref _glassRainRippleStrength, Names.GlassRainRippleStrength, properties);
+        BindProperty(ref _glassRainRippleScale, Names.GlassRainRippleScale, properties);
+        BindProperty(ref _glassRainRippleSpeed, Names.GlassRainRippleSpeed, properties);
+        BindProperty(ref _glassRainRippleDensity, Names.GlassRainRippleDensity, properties);
+        BindProperty(ref _glassRainAutoThreshold, Names.GlassRainAutoThreshold, properties);
+        BindProperty(ref _glassRainAutoBlend, Names.GlassRainAutoBlend, properties);
+        BindProperty(ref _glassRainMask, Names.GlassRainMask, properties);
+        BindProperty(ref _glassRainMaskChannel, Names.GlassRainMaskChannel, properties);
+        BindProperty(ref _glassRainSheet, Names.GlassRainSheet, properties);
+        BindProperty(ref _glassRainDropletMask, Names.GlassRainDropletMask, properties);
+        BindProperty(ref _glassRainNoiseTex, Names.GlassRainNoiseTex, properties);
 
         BindProperty(ref _ior, Names.Ior, properties);
         BindProperty(ref _reflectionTint, Names.ReflectionTint, properties);
@@ -471,6 +569,46 @@ public sealed class GlassShaderGUI : ShaderGUI
             DrawProperty(materialEditor, _refractionBlurThicknessInfluence, Styles.RefractionBlurThicknessInfluence);
             DrawProperty(materialEditor, _refractionBlurScale, Styles.RefractionBlurScale);
             DrawProperty(materialEditor, _refractionBlurKernelSigma, Styles.RefractionBlurKernelSigma);
+        }
+    }
+
+    private void DrawRain(MaterialEditor materialEditor)
+    {
+        DrawToggle(_glassRainEnabled, Styles.GlassRainEnabled);
+
+        using (new EditorGUI.DisabledScope(!GetToggleValue(_glassRainEnabled)))
+        {
+            DrawProperty(materialEditor, _glassRainMode, Styles.GlassRainMode);
+            DrawProperty(materialEditor, _glassRainNormalBlend, Styles.GlassRainNormalBlend);
+            DrawProperty(materialEditor, _glassRainWetness, Styles.GlassRainWetness);
+
+            DrawProperty(materialEditor, _glassRainStrength, Styles.GlassRainStrength);
+            DrawProperty(materialEditor, _glassRainSpeed, Styles.GlassRainSpeed);
+            DrawProperty(materialEditor, _glassRainTiling, Styles.GlassRainTiling);
+            DrawProperty(materialEditor, _glassRainSheetRows, Styles.GlassRainSheetRows);
+            DrawProperty(materialEditor, _glassRainSheetColumns, Styles.GlassRainSheetColumns);
+            DrawProperty(materialEditor, _glassRainDynamicDroplets, Styles.GlassRainDynamicDroplets);
+
+            DrawProperty(materialEditor, _glassRainRippleStrength, Styles.GlassRainRippleStrength);
+            DrawProperty(materialEditor, _glassRainRippleScale, Styles.GlassRainRippleScale);
+            DrawProperty(materialEditor, _glassRainRippleSpeed, Styles.GlassRainRippleSpeed);
+            DrawProperty(materialEditor, _glassRainRippleDensity, Styles.GlassRainRippleDensity);
+            DrawProperty(materialEditor, _glassRainAutoThreshold, Styles.GlassRainAutoThreshold);
+            DrawProperty(materialEditor, _glassRainAutoBlend, Styles.GlassRainAutoBlend);
+
+            if (_glassRainMask != null)
+            {
+                materialEditor.TexturePropertySingleLine(Styles.GlassRainMask, _glassRainMask, _glassRainMaskChannel);
+                materialEditor.TextureScaleOffsetProperty(_glassRainMask);
+            }
+            else
+            {
+                DrawProperty(materialEditor, _glassRainMaskChannel, Styles.GlassRainMaskChannel);
+            }
+
+            DrawTexture(materialEditor, _glassRainSheet, Styles.GlassRainSheet);
+            DrawTexture(materialEditor, _glassRainDropletMask, Styles.GlassRainDropletMask);
+            DrawTexture(materialEditor, _glassRainNoiseTex, Styles.GlassRainNoiseTex);
         }
     }
 
@@ -648,6 +786,29 @@ public sealed class GlassShaderGUI : ShaderGUI
         if (_ior != null && _ior.floatValue <= 1.01f)
         {
             EditorGUILayout.HelpBox("Index Of Refraction is very close to 1.0; Fresnel and glass realism may look weak.", MessageType.Info);
+        }
+
+        if (GetToggleValue(_glassRainEnabled))
+        {
+            if (material.GetTexture(Names.GlassRainMask) == null)
+            {
+                EditorGUILayout.HelpBox("Rain is enabled but Rain Mask is not assigned.", MessageType.Warning);
+            }
+
+            if (material.GetTexture(Names.GlassRainSheet) == null)
+            {
+                EditorGUILayout.HelpBox("Rain is enabled but Rain Texture Sheet is not assigned.", MessageType.Warning);
+            }
+
+            if (material.GetTexture(Names.GlassRainDropletMask) == null)
+            {
+                EditorGUILayout.HelpBox("Rain is enabled but Rain Droplet Mask is not assigned.", MessageType.Warning);
+            }
+
+            if (material.GetTexture(Names.GlassRainNoiseTex) == null)
+            {
+                EditorGUILayout.HelpBox("Rain is enabled but Rain Noise Texture is not assigned.", MessageType.Warning);
+            }
         }
 
         if (GetToggleValue(_useMeshEdge))
