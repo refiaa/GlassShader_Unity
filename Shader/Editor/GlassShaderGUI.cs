@@ -5,11 +5,10 @@ public sealed class GlassShaderGUI : ShaderGUI
 {
     private static class Styles
     {
-        public static readonly GUIContent MainControls = new GUIContent("Main Controls");
-        public static readonly GUIContent SurfaceDetail = new GUIContent("Primary Textures");
-        public static readonly GUIContent ExternalInputs = new GUIContent("Scene Inputs");
-        public static readonly GUIContent AdvancedOptics = new GUIContent("Advanced Optics");
-        public static readonly GUIContent FallbackAndStability = new GUIContent("Fallback And Stability");
+        public static readonly GUIContent Refraction = new GUIContent("Refraction");
+        public static readonly GUIContent TexturesAndShading = new GUIContent("Textures And Shading");
+        public static readonly GUIContent GlassBodyThicknessColor = new GUIContent("Glass Body (Thickness & Color)");
+        public static readonly GUIContent FallbackAndInputs = new GUIContent("Fallback And Inputs");
         public static readonly GUIContent Debug = new GUIContent("Debug");
 
         public static readonly GUIContent BaseTint = new GUIContent("Reserved RGB / Effect Blend (A)");
@@ -160,11 +159,10 @@ public sealed class GlassShaderGUI : ShaderGUI
         DebugKeywords.Fresnel
     };
 
-    private static bool _showMainControls = true;
-    private static bool _showPrimaryTextures = true;
-    private static bool _showSceneInputs = true;
-    private static bool _showAdvancedOptics;
-    private static bool _showFallbackAndStability;
+    private static bool _showRefraction = true;
+    private static bool _showTexturesAndShading = true;
+    private static bool _showGlassBodyThicknessColor = true;
+    private static bool _showFallbackAndInputs;
     private static bool _showDebug;
 
     private static GUIStyle _sectionFoldoutStyle;
@@ -238,43 +236,35 @@ public sealed class GlassShaderGUI : ShaderGUI
 
         EditorGUI.BeginChangeCheck();
 
-        _showMainControls = DrawSectionHeader(Styles.MainControls, _showMainControls);
-        if (_showMainControls)
+        _showGlassBodyThicknessColor = DrawSectionHeader(Styles.GlassBodyThicknessColor, _showGlassBodyThicknessColor);
+        if (_showGlassBodyThicknessColor)
         {
             BeginSectionBody();
-            DrawMainControls(materialEditor);
+            DrawGlassBodyThicknessColor(materialEditor);
             EndSectionBody();
         }
 
-        _showPrimaryTextures = DrawSectionHeader(Styles.SurfaceDetail, _showPrimaryTextures);
-        if (_showPrimaryTextures)
+        _showTexturesAndShading = DrawSectionHeader(Styles.TexturesAndShading, _showTexturesAndShading);
+        if (_showTexturesAndShading)
         {
             BeginSectionBody();
-            DrawSurfaceDetail(materialEditor);
+            DrawTexturesAndShading(materialEditor);
             EndSectionBody();
         }
 
-        _showSceneInputs = DrawSectionHeader(Styles.ExternalInputs, _showSceneInputs);
-        if (_showSceneInputs)
+        _showRefraction = DrawSectionHeader(Styles.Refraction, _showRefraction);
+        if (_showRefraction)
         {
             BeginSectionBody();
-            DrawExternalInputs(materialEditor);
+            DrawRefraction(materialEditor);
             EndSectionBody();
         }
 
-        _showAdvancedOptics = DrawSectionHeader(Styles.AdvancedOptics, _showAdvancedOptics);
-        if (_showAdvancedOptics)
+        _showFallbackAndInputs = DrawSectionHeader(Styles.FallbackAndInputs, _showFallbackAndInputs);
+        if (_showFallbackAndInputs)
         {
             BeginSectionBody();
-            DrawAdvancedOptics(materialEditor);
-            EndSectionBody();
-        }
-
-        _showFallbackAndStability = DrawSectionHeader(Styles.FallbackAndStability, _showFallbackAndStability);
-        if (_showFallbackAndStability)
-        {
-            BeginSectionBody();
-            DrawFallbackAndStability(materialEditor);
+            DrawFallbackAndInputs(materialEditor);
             EndSectionBody();
         }
 
@@ -412,76 +402,21 @@ public sealed class GlassShaderGUI : ShaderGUI
         EditorGUILayout.EndVertical();
     }
 
-    private void DrawMainControls(MaterialEditor materialEditor)
+    private void DrawRefraction(MaterialEditor materialEditor)
     {
-        DrawColor(materialEditor, _transmissionColorAtDistance, Styles.TransmittanceAtDistance);
-        DrawProperty(materialEditor, _referenceDistance, Styles.ReferenceDistance);
-        DrawProperty(materialEditor, _transmittanceInfluence, Styles.TransmittanceInfluence);
-        DrawProperty(materialEditor, _transmittanceCurvePower, Styles.TransmittanceCurvePower);
-        DrawProperty(materialEditor, _depthTintStrength, Styles.DepthTintStrength);
-        DrawProperty(materialEditor, _depthTintCurve, Styles.DepthTintCurve);
-        DrawProperty(materialEditor, _thicknessScale, Styles.ThicknessScale);
-        DrawProperty(materialEditor, _thicknessBias, Styles.ThicknessBias);
-        DrawProperty(materialEditor, _maxThickness, Styles.MaxThickness);
-
-        DrawProperty(materialEditor, _ior, Styles.IndexOfRefraction);
         DrawProperty(materialEditor, _refractionStrength, Styles.RefractionStrength);
         DrawProperty(materialEditor, _distortionFace, Styles.DistortionFace);
         DrawProperty(materialEditor, _distortionEdge, Styles.DistortionEdge);
-        DrawProperty(materialEditor, _smoothness, Styles.Smoothness);
-        DrawColor(materialEditor, _reflectionTint, Styles.ReflectionTint);
-        DrawProperty(materialEditor, _envReflectionStrength, Styles.EnvReflectionStrength);
-        DrawProperty(materialEditor, _specularStrength, Styles.DirectSpecularStrength);
-        DrawToggle(_useMeshEdge, Styles.UseMeshEdge);
-        using (new EditorGUI.DisabledScope(!GetToggleValue(_useMeshEdge)))
-        {
-            DrawColor(materialEditor, _meshEdgeColor, Styles.MeshEdgeColor);
-            DrawProperty(materialEditor, _meshEdgeWidth, Styles.MeshEdgeWidth);
-            DrawProperty(materialEditor, _meshEdgeThreshold, Styles.MeshEdgeThreshold);
-            DrawProperty(materialEditor, _meshEdgeSoftness, Styles.MeshEdgeSoftness);
-            DrawProperty(materialEditor, _meshEdgeIntensity, Styles.MeshEdgeIntensity);
-        }
-    }
-
-    private void DrawAdvancedOptics(MaterialEditor materialEditor)
-    {
-        DrawColor(materialEditor, _baseTint, Styles.BaseTint);
         DrawToggle(_useChromaticAberration, Styles.UseChromaticAberration);
-
         using (new EditorGUI.DisabledScope(!GetToggleValue(_useChromaticAberration)))
         {
             DrawProperty(materialEditor, _chromaticAberration, Styles.ChromaticAberration);
         }
 
         DrawProperty(materialEditor, _screenEdgeFadePixels, Styles.RefractionScreenEdgeFade);
-        DrawProperty(materialEditor, _fresnelBoost, Styles.FresnelBoost);
-        DrawProperty(materialEditor, _transmissionAtGrazing, Styles.TransmissionAtGrazing);
-        DrawProperty(materialEditor, _reflectionAbsorption, Styles.ReflectionAbsorptionCoupling);
-        DrawProperty(materialEditor, _nearFadeDistance, Styles.NearCameraFadeDistance);
-        DrawProperty(materialEditor, _depthEdgeFixPixels, Styles.BackDepthEdgeFixRadius);
-        DrawProperty(materialEditor, _uvClamp, Styles.UVClamp);
     }
 
-    private void DrawFallbackAndStability(MaterialEditor materialEditor)
-    {
-        DrawProperty(materialEditor, _fallbackThickness, Styles.FallbackThickness);
-        DrawToggle(_fallbackUseAngle, Styles.FallbackUseAngle);
-        DrawProperty(materialEditor, _fallbackAbsorptionScale, Styles.FallbackAbsorptionScale);
-        DrawProperty(materialEditor, _minViewDot, Styles.FallbackMinDot);
-
-        DrawToggle(_useBoundsThicknessFallback, Styles.UseBoundsFallback);
-        using (new EditorGUI.DisabledScope(!GetToggleValue(_useBoundsThicknessFallback)))
-        {
-            DrawProperty(materialEditor, _boundsFallbackBlend, Styles.BoundsFallbackBlend);
-            DrawProperty(materialEditor, _fallbackBoundsMin, Styles.FallbackBoundsMin);
-            DrawProperty(materialEditor, _fallbackBoundsMax, Styles.FallbackBoundsMax);
-        }
-
-        DrawProperty(materialEditor, _grazingAssistNdotV, Styles.GrazingAssistNdotV);
-        DrawProperty(materialEditor, _grazingThicknessAssist, Styles.GrazingThicknessAssist);
-    }
-
-    private void DrawSurfaceDetail(MaterialEditor materialEditor)
+    private void DrawTexturesAndShading(MaterialEditor materialEditor)
     {
         if (_normalMap != null)
         {
@@ -526,9 +461,42 @@ public sealed class GlassShaderGUI : ShaderGUI
         {
             DrawProperty(materialEditor, _metallicMapStrength, Styles.MetallicMapStrength);
         }
+
+        DrawProperty(materialEditor, _smoothness, Styles.Smoothness);
+        DrawProperty(materialEditor, _ior, Styles.IndexOfRefraction);
+        DrawColor(materialEditor, _reflectionTint, Styles.ReflectionTint);
+        DrawProperty(materialEditor, _envReflectionStrength, Styles.EnvReflectionStrength);
+        DrawProperty(materialEditor, _specularStrength, Styles.DirectSpecularStrength);
+        DrawProperty(materialEditor, _fresnelBoost, Styles.FresnelBoost);
+
+        DrawToggle(_useMeshEdge, Styles.UseMeshEdge);
+        using (new EditorGUI.DisabledScope(!GetToggleValue(_useMeshEdge)))
+        {
+            DrawColor(materialEditor, _meshEdgeColor, Styles.MeshEdgeColor);
+            DrawProperty(materialEditor, _meshEdgeWidth, Styles.MeshEdgeWidth);
+            DrawProperty(materialEditor, _meshEdgeThreshold, Styles.MeshEdgeThreshold);
+            DrawProperty(materialEditor, _meshEdgeSoftness, Styles.MeshEdgeSoftness);
+            DrawProperty(materialEditor, _meshEdgeIntensity, Styles.MeshEdgeIntensity);
+        }
     }
 
-    private void DrawExternalInputs(MaterialEditor materialEditor)
+    private void DrawGlassBodyThicknessColor(MaterialEditor materialEditor)
+    {
+        DrawColor(materialEditor, _baseTint, Styles.BaseTint);
+        DrawColor(materialEditor, _transmissionColorAtDistance, Styles.TransmittanceAtDistance);
+        DrawProperty(materialEditor, _referenceDistance, Styles.ReferenceDistance);
+        DrawProperty(materialEditor, _transmittanceInfluence, Styles.TransmittanceInfluence);
+        DrawProperty(materialEditor, _transmittanceCurvePower, Styles.TransmittanceCurvePower);
+        DrawProperty(materialEditor, _depthTintStrength, Styles.DepthTintStrength);
+        DrawProperty(materialEditor, _depthTintCurve, Styles.DepthTintCurve);
+        DrawProperty(materialEditor, _thicknessScale, Styles.ThicknessScale);
+        DrawProperty(materialEditor, _thicknessBias, Styles.ThicknessBias);
+        DrawProperty(materialEditor, _maxThickness, Styles.MaxThickness);
+        DrawProperty(materialEditor, _transmissionAtGrazing, Styles.TransmissionAtGrazing);
+        DrawProperty(materialEditor, _reflectionAbsorption, Styles.ReflectionAbsorptionCoupling);
+    }
+
+    private void DrawFallbackAndInputs(MaterialEditor materialEditor)
     {
         DrawTexture(materialEditor, _backDepthTex, Styles.BackDepthTexture);
         DrawTexture(materialEditor, _sceneColorTex, Styles.SceneColorTexture);
@@ -542,6 +510,25 @@ public sealed class GlassShaderGUI : ShaderGUI
 
         DrawToggle(_useUdonStereoTextures, Styles.UseUdonStereoTextures);
         DrawToggle(_useGrabPassFallback, Styles.UseGrabPassFallback);
+        DrawProperty(materialEditor, _uvClamp, Styles.UVClamp);
+
+        DrawProperty(materialEditor, _fallbackThickness, Styles.FallbackThickness);
+        DrawToggle(_fallbackUseAngle, Styles.FallbackUseAngle);
+        DrawProperty(materialEditor, _fallbackAbsorptionScale, Styles.FallbackAbsorptionScale);
+        DrawProperty(materialEditor, _minViewDot, Styles.FallbackMinDot);
+
+        DrawToggle(_useBoundsThicknessFallback, Styles.UseBoundsFallback);
+        using (new EditorGUI.DisabledScope(!GetToggleValue(_useBoundsThicknessFallback)))
+        {
+            DrawProperty(materialEditor, _boundsFallbackBlend, Styles.BoundsFallbackBlend);
+            DrawProperty(materialEditor, _fallbackBoundsMin, Styles.FallbackBoundsMin);
+            DrawProperty(materialEditor, _fallbackBoundsMax, Styles.FallbackBoundsMax);
+        }
+
+        DrawProperty(materialEditor, _grazingAssistNdotV, Styles.GrazingAssistNdotV);
+        DrawProperty(materialEditor, _grazingThicknessAssist, Styles.GrazingThicknessAssist);
+        DrawProperty(materialEditor, _nearFadeDistance, Styles.NearCameraFadeDistance);
+        DrawProperty(materialEditor, _depthEdgeFixPixels, Styles.BackDepthEdgeFixRadius);
     }
 
     private void DrawDebug(MaterialEditor materialEditor)
