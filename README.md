@@ -50,6 +50,3 @@ This shader has been tested and verified in the following environments:
  
 ---
 
-[![GitHub release](https://img.shields.io/github/release/refiaa/GlassShader_Unity.svg?color=Green)](https://github.com/refiaa/GlassShader_Unity/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/refiaa/GlassShader_Unity/total?color=6451f1)](https://github.com/refiaa/GlassShader_Unity/releases/latest)
-
