@@ -24,7 +24,7 @@ The shader has been verified to work in **Unity 2022.3.22f1, 2022.3.22f2** and *
     </tr>
     <tr>
       <td align="center">
-        <video src="https://github.com/user-attachments/assets/853d5ab6-5d54-49b9-9283-c2f16bd44050" width="100%" controls autoplay loop muted></video>
+        <video src="https://github.com/user-attachments/assets/dfd13087-c7e7-404f-8969-8435d52d4d2d" width="100%" controls autoplay loop muted></video>
       </td>
     </tr>
     <tr>
