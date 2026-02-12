@@ -8,7 +8,7 @@ A physically-based glass shader designed for the **Unity Built-in Render Pipelin
 
 This shader applies the **Beer-Lambert Law** to simulate physical light absorption based on the thickness of the glass. This achieves a realistic glass material where thin areas appear transparent, while thicker areas appear denser and darker.
 
-The shader has been verified to work in **Unity 2022.3.22f1, 2022.3.22f2** and **VRChat**.
+The shader has been verified to work in **Unity 2022.3.22f1, 2022.3.22f2, 2022.3.6f1** and **VRChat**.
 
 ## Key Features
 
