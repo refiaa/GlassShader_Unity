@@ -44,6 +44,7 @@ This shader has been tested and verified in the following environments:
 * **Unity Version:**
   * 2022.3.22f1 (Verified)
   * 2022.3.22f2 (Verified)
+  * 2022.3.6f1 (Verified)
 
 * **Platform:**
   * VRChat
